@@ -1,0 +1,65 @@
+/* Farben aus Optik 8 ("Klar" mit Hell/Dunkel). Jede Farbe gibt es zweimal. */
+:root,
+[data-theme='hell'] {
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #e8ebf0;
+  --line: #eef0f4;
+  --track: #e8ebf0;
+  --text: #111827;
+  --muted: #5b6472;
+  --accent: #0f766e;
+  --accent-soft: #e6f4f2;
+  --on-accent: #ffffff;
+  --ok: #0f766e;
+  --warn: #b45309;
+  --fehler: #b91c1c;
+  --fehler-soft: #fdecec;
+  --punkt-1: #0f766e;
+  --punkt-2: #2563eb;
+  --punkt-3: #c2410c;
+  color-scheme: light;
+}
+
+[data-theme='dunkel'] {
+  --bg: #0b0f14;
+  --card: #11161d;
+  --border: #1d2530;
+  --line: #1d2530;
+  --track: #1d2530;
+  --text: #f1f5f9;
+  --muted: #9aa4b2;
+  --accent: #34d399;
+  --accent-soft: #12352b;
+  --on-accent: #0b0f14;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --fehler: #fca5a5;
+  --fehler-soft: #3a1d1f;
+  --punkt-1: #34d399;
+  --punkt-2: #60a5fa;
+  --punkt-3: #fb923c;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+#root {
+  min-height: 100dvh;
+}
