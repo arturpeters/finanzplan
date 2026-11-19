@@ -557,3 +557,121 @@ button:disabled {
     border-radius: 24px;
   }
 }
+
+/* ---------- Phase 2: Posten und Frei pro Monat ---------- */
+
+.riesig {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.minus,
+.riesig.minus,
+.wert.minus {
+  color: var(--warn);
+}
+
+.hinweis {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.balken {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.drei-spalten,
+.vier-spalten {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.drei-spalten {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.vier-spalten {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 14px;
+}
+
+.drei-spalten > div,
+.vier-spalten > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wert {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.wert.akzent {
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.abschnitt-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--line);
+}
+
+.posten-zeile {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.posten-zeile:last-child {
+  border-bottom: 0;
+}
+
+.posten-zeile.blass {
+  opacity: 0.6;
+}
+
+.posten-betrag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.feld-reihe {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.feld-reihe .feld {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .vier-spalten {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

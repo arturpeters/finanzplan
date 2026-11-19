@@ -13,7 +13,7 @@ export function formatEuroGanz(betrag: number): string {
 
 /**
  * Liest einen Betrag so, wie man ihn in Deutschland tippt:
- * "1.234,56" → 1234.56, "1234,5" → 1234.5, "-200" → -200, "12.5" → 12.5
+ * "1.234,56" → 1234.56, "1234,5" → 1234.5, "1.050" → 1050, "-200" → -200, "12.5" → 12.5
  * Gibt null zurück, wenn das keine Zahl ist.
  */
 export function parseBetrag(eingabe: string): number | null {
@@ -22,6 +22,9 @@ export function parseBetrag(eingabe: string): number | null {
   if (s.includes(',')) {
     // Komma ist Dezimaltrenner, Punkte sind Tausendertrenner
     s = s.replace(/\./g, '').replace(',', '.')
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+    // "1.050" oder "12.500.000" ohne Komma: Punkte sind Tausendertrenner
+    s = s.replace(/\./g, '')
   }
   const n = Number(s)
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null
