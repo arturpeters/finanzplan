@@ -12,10 +12,11 @@ const kurzJahr = new Intl.DateTimeFormat('de-DE', { month: 'short', year: '2-dig
 
 interface Props {
   prognose: Prognose
-  jetzt: number
+  jetzt: number // Monat des Startpunkts (Punkt 0)
+  startLabel: string
 }
 
-export default function PrognoseDiagramm({ prognose, jetzt }: Props) {
+export default function PrognoseDiagramm({ prognose, jetzt, startLabel }: Props) {
   const flaeche = useRef<HTMLDivElement>(null)
   const [auswahl, setAuswahl] = useState<number | null>(null)
 
@@ -55,12 +56,12 @@ export default function PrognoseDiagramm({ prognose, jetzt }: Props) {
   const monat = gewaehlt === 0 ? null : prognose.monate[gewaehlt - 1]
   const ereignisPunkte = prognose.monate.map((m, i) => ({ i: i + 1, m })).filter((p) => p.m.ereignisse.length > 0)
 
-  const zusammenfassung = `Vermögensprognose: heute ${formatEuroGanz(prognose.start)}, in ${n} Monaten ${formatEuroGanz(werte[n])}. Tiefster Stand ${formatEuroGanz(Math.min(...werte))}.`
+  const zusammenfassung = `Vermögensprognose: ${startLabel} ${formatEuroGanz(prognose.start)}, in ${n} Monaten ${formatEuroGanz(werte[n])}. Tiefster Stand ${formatEuroGanz(Math.min(...werte))}.`
 
   return (
     <div className="diagramm">
       <div className="diagramm-info" aria-live="polite">
-        <span className="klein">{gewaehlt === 0 ? 'Heute' : lang.format(monatVon(gewaehlt))}</span>
+        <span className="klein">{gewaehlt === 0 ? startLabel : lang.format(monatVon(gewaehlt))}</span>
         <span className="mittel">{formatEuro(werte[gewaehlt])}</span>
         {monat && (
           <span className={`klein ${monat.veraenderung < 0 ? 'warn' : ''}`}>
@@ -103,7 +104,7 @@ export default function PrognoseDiagramm({ prognose, jetzt }: Props) {
       <div className="diagramm-achse" aria-hidden="true">
         {marken.map((i) => (
           <span key={i} style={{ left: `${(i / Math.max(1, n)) * 100}%` }}>
-            {i === 0 ? 'heute' : n > 12 ? kurzJahr.format(monatVon(i)) : kurz.format(monatVon(i))}
+            {i === 0 ? startLabel.toLowerCase() : n > 12 ? kurzJahr.format(monatVon(i)) : kurz.format(monatVon(i))}
           </span>
         ))}
       </div>

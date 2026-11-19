@@ -961,3 +961,60 @@ button:disabled {
   border-radius: 4px;
   pointer-events: none;
 }
+
+/* ---------- Phase 5: Monatsabgleich ---------- */
+
+.karte-hinweis {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.meldung-warn {
+  background: var(--track);
+  color: var(--text);
+}
+
+.abgleich-zeile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.abgleich-zeile:last-child {
+  border-bottom: 0;
+}
+
+.abgleich-eingabe {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.abgleich-eingabe input {
+  width: 130px;
+  height: 44px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 12px;
+}
+
+.abgleich-eingabe input.ungueltig {
+  border-color: var(--fehler);
+}
+
+.abgleich-eingabe .klein-knopf {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 4px;
+}

@@ -7,6 +7,7 @@ interface Props {
   konten: Konto[]
   offline: boolean
   neuLaden: () => Promise<void>
+  zuAbgleich: () => void
 }
 
 const PUNKT_FARBEN: Record<string, string> = {
@@ -18,7 +19,7 @@ const PUNKT_FARBEN: Record<string, string> = {
   sonstiges: 'var(--muted)',
 }
 
-export default function Konten({ konten, offline, neuLaden }: Props) {
+export default function Konten({ konten, offline, neuLaden, zuAbgleich }: Props) {
   const [bearbeiten, setBearbeiten] = useState<Konto | 'neu' | null>(null)
   const [zeigeAusgeblendete, setZeigeAusgeblendete] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -95,6 +96,7 @@ export default function Konten({ konten, offline, neuLaden }: Props) {
 
       <div className="knopf-reihe">
         <button className="knopf-primaer" onClick={() => setBearbeiten('neu')} disabled={offline}>+ Konto anlegen</button>
+        {aktive.length > 0 && <button className="knopf-zweit" onClick={zuAbgleich}>Monatsabgleich</button>}
         {anzahlAusgeblendet > 0 && (
           <button className="knopf-zweit" onClick={() => setZeigeAusgeblendete(!zeigeAusgeblendete)}>
             {zeigeAusgeblendete ? 'Ausgeblendete verstecken' : `${anzahlAusgeblendet} ausgeblendet anzeigen`}

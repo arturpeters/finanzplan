@@ -1,7 +1,8 @@
 import { formatEuro } from '../lib/format'
 import { summeVermoegen, type Konto } from '../lib/konten'
 import { indexZuDatum, monatsIndex, monatsSumme, type Posten } from '../lib/posten'
-import { ladeFreiModus, rechnePrognose } from '../lib/prognose'
+import { abgleichFaellig, runden, type Abgleich } from '../lib/abgleich'
+import { basisMonat, ladeFreiModus, rechnePrognose } from '../lib/prognose'
 import { toepfeRate, type Topf } from '../lib/toepfe'
 
 interface Props {
@@ -11,17 +12,23 @@ interface Props {
   zuKonten: () => void
   zuPlanen: () => void
   zuPrognose: () => void
+  zuAbgleich: () => void
+  abgleiche: Abgleich[]
 }
 
-export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen, zuPrognose }: Props) {
+export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen, zuPrognose, zuAbgleich, abgleiche }: Props) {
   const aktiveKonten = konten.filter((k) => k.aktiv)
   const jetzt = monatsIndex(new Date())
   const summe = monatsSumme(posten, jetzt)
   const toepfeMonat = toepfeRate(toepfe, jetzt)
   const frei = Math.round((summe.frei - toepfeMonat) * 100) / 100
   const hatPosten = posten.some((p) => p.aktiv)
-  const prognose = aktiveKonten.length > 0 ? rechnePrognose(konten, posten, toepfe, jetzt, 12, ladeFreiModus()) : null
+  const basis = basisMonat(konten, jetzt)
+  const prognose = aktiveKonten.length > 0 ? rechnePrognose(konten, posten, toepfe, basis, 12 + Math.max(0, jetzt - basis), ladeFreiModus()) : null
   const werte = prognose ? [prognose.start, ...prognose.monate.map((m) => m.gesamt)] : []
+  const planIn12 = prognose ? prognose.monate[prognose.monate.length - 1].gesamt : 0
+  const faellig = abgleichFaellig(konten, jetzt)
+  const letzteRunde = runden(abgleiche).find((r) => r.abweichung !== null)
   const lo = Math.min(...werte)
   const hi = Math.max(...werte)
   const spanne = hi - lo || 1
@@ -61,6 +68,28 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
         )}
       </section>
 
+      {aktiveKonten.length > 0 && (faellig || letzteRunde) && (
+        <section className={`karte ${faellig ? 'karte-hinweis' : ''}`}>
+          <div className="zwei-werte">
+            <div>
+              <span className="klein">{faellig ? 'Monatsabgleich fällig' : 'Letzter Abgleich'}</span>
+              <span className="zeile-titel">
+                {faellig ? 'Echte Kontostände eintragen' : new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long' }).format(new Date(letzteRunde!.datum))}
+              </span>
+            </div>
+            {letzteRunde && letzteRunde.abweichung !== null && (
+              <div className="rechtsbuendig">
+                <span className="klein">Plan vs. Ist</span>
+                <span className={`zeile-titel ${letzteRunde.abweichung < 0 ? 'minus' : 'akzent-text'}`}>
+                  {letzteRunde.abweichung >= 0 ? '+' : ''}{formatEuro(letzteRunde.abweichung)}
+                </span>
+              </div>
+            )}
+          </div>
+          {faellig && <button className="knopf-primaer" onClick={zuAbgleich}>Jetzt abgleichen · ca. 2 Min.</button>}
+        </section>
+      )}
+
       <section className="karte">
         <div className="zwei-werte">
           <div>
@@ -70,7 +99,7 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
           {prognose && (
             <div className="rechtsbuendig">
               <span className="klein">Plan {planMonat}</span>
-              <span className="mittel akzent-text">{formatEuro(prognose.monate[11].gesamt)}</span>
+              <span className="mittel akzent-text">{formatEuro(planIn12)}</span>
             </div>
           )}
         </div>

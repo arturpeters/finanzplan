@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { formatEuro, formatEuroGanz } from '../lib/format'
 import type { Konto } from '../lib/konten'
 import { indexZuDatum, monatsIndex, type Posten } from '../lib/posten'
-import { FREI_MODI, ladeFreiModus, rechnePrognose, speichereFreiModus, type FreiModus } from '../lib/prognose'
+import { basisMonat, FREI_MODI, ladeFreiModus, rechnePrognose, speichereFreiModus, type FreiModus } from '../lib/prognose'
 import type { Topf } from '../lib/toepfe'
 import PrognoseDiagramm from './PrognoseDiagramm'
 
@@ -42,7 +42,14 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
   const [tabelleOffen, setTabelleOffen] = useState(false)
   const jetzt = monatsIndex(new Date())
 
-  const prognose = useMemo(() => rechnePrognose(konten, posten, toepfe, jetzt, horizont, freiModus), [konten, posten, toepfe, jetzt, horizont, freiModus])
+  // Gerechnet wird ab dem letzten bekannten Stand bis "heute + Zeitraum"
+  const basis = basisMonat(konten, jetzt)
+  const prognose = useMemo(
+    () => rechnePrognose(konten, posten, toepfe, basis, horizont + Math.max(0, jetzt - basis), freiModus),
+    [konten, posten, toepfe, basis, jetzt, horizont, freiModus],
+  )
+  const startLabel = basis === jetzt ? 'Heute' : basis === jetzt - 1 ? 'Monatsanfang' : 'Letzter Stand'
+  const veraltet = basis < jetzt - 1
   const ende = prognose.monate[prognose.monate.length - 1]
   const tiefsterMonat = prognose.monate.reduce((a, b) => (b.gesamt < a.gesamt ? b : a), prognose.monate[0])
   const tiefster = tiefsterMonat.gesamt < prognose.start ? { text: kurzMonat.format(new Date(indexZuDatum(tiefsterMonat.index))), wert: tiefsterMonat.gesamt } : { text: 'heute', wert: prognose.start }
@@ -67,7 +74,7 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
             <span className="gross">{formatEuro(ende.gesamt)}</span>
             <span className={`klein ${ende.gesamt - prognose.start < 0 ? 'warn' : ''}`}>
               {ende.gesamt - prognose.start >= 0 ? '+' : ''}
-              {formatEuro(ende.gesamt - prognose.start)} gegenüber heute ({formatEuro(prognose.start)})
+              {formatEuro(ende.gesamt - prognose.start)} gegenüber {startLabel === 'Heute' ? 'heute' : startLabel === 'Monatsanfang' ? 'Monatsanfang' : 'letztem Stand'} ({formatEuro(prognose.start)})
             </span>
           </div>
           <div className="segment segment-klein" role="radiogroup" aria-label="Zeitraum">
@@ -88,9 +95,15 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
           </div>
         </div>
 
-        <PrognoseDiagramm prognose={prognose} jetzt={jetzt} />
+        <PrognoseDiagramm prognose={prognose} jetzt={basis} startLabel={startLabel} />
         <span className="klein">Tippen oder darüberfahren zeigt einzelne Monate. Punkte markieren besondere Zahlungen.</span>
       </section>
+
+      {veraltet && (
+        <p className="meldung meldung-warn">
+          Der letzte bekannte Kontostand ist von {monatJahr.format(new Date(indexZuDatum(basis)))}. Die Prognose rechnet die Monate seitdem nach Plan – mit einem Monatsabgleich wird sie genauer.
+        </p>
+      )}
 
       {prognose.warnung && warnKonto && (
         <p className="meldung meldung-fehler" role="alert">
@@ -128,7 +141,7 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
           <div key={k.id} className="zeile">
             <div className="zeile-text">
               <span className="zeile-titel">{k.name}</span>
-              <span className="klein">heute {formatEuro(k.startsaldo)}</span>
+              <span className="klein">{startLabel.toLowerCase()} {formatEuro(k.startsaldo)}</span>
             </div>
             <span className={`betrag ${(ende.proKonto[k.id] ?? 0) < 0 ? 'minus' : ''}`}>{formatEuro(ende.proKonto[k.id] ?? 0)}</span>
           </div>
@@ -179,12 +192,11 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
       <details className="karte annahmen">
         <summary className="zeile-titel">So rechnet die Prognose</summary>
         <ul className="klein">
-          <li>Start sind die heutigen Kontostände aller aktiven Konten. Gerechnet wird ab dem nächsten Monat.</li>
+          <li>Start ist der letzte bekannte Stand deiner aktiven Konten. Ein Monatsabgleich gilt als Stand zum Monatsanfang, der laufende Monat wird dann noch mitgerechnet. Ein Kontostand, den du mitten im Monat beim Anlegen eingetragen hast, gilt als Stand zum Monatsende.</li>
           <li>Posten zählen in dem Monat, in dem sie wirklich bezahlt werden – die jährliche Versicherung also voll im Fälligkeitsmonat.</li>
           <li>Umbuchungen und Töpfe verschieben Geld zwischen deinen Konten. Im Zielmonat eines Topfs wird der Zielbetrag ausgegeben.</li>
           <li>Depots wachsen mit der Rendite, die du beim Konto eingetragen hast. Das ist eine Annahme, keine Zusage.</li>
           <li>Posten ohne Konto laufen über dein Girokonto.</li>
-          <li>Ab Phase 5 startet die Prognose beim letzten Monatsabgleich mit deinen echten Kontoständen.</li>
         </ul>
       </details>
     </>

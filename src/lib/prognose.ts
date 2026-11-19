@@ -70,6 +70,25 @@ export interface Prognose {
 
 const r2 = (x: number) => Math.round(x * 100) / 100
 
+/**
+ * Ab welchem Monatsende die Prognose rechnet.
+ * - Stand vom 1. eines Monats (Monatsabgleich) = Stand zum Monatsanfang = Ende des Vormonats.
+ *   Der laufende Monat wird dann noch mitgerechnet.
+ * - Stand von einem anderen Tag (z. B. beim Anlegen eines Kontos) = Ende dieses Monats.
+ * Bei mehreren Konten zählt der älteste Stand.
+ */
+export function kontoBasis(k: Konto): number {
+  const [j, m, t] = k.startsaldo_datum.split('-').map(Number)
+  const idx = j * 12 + (m - 1)
+  return t === 1 ? idx - 1 : idx
+}
+
+export function basisMonat(konten: Konto[], jetzt: number): number {
+  const aktive = konten.filter((k) => k.aktiv)
+  if (aktive.length === 0) return jetzt
+  return Math.min(...aktive.map(kontoBasis))
+}
+
 export function rechnePrognose(
   konten: Konto[],
   posten: Posten[],
@@ -82,6 +101,13 @@ export function rechnePrognose(
   const aktivIds = new Set(aktive.map((k) => k.id))
   const standardKonto = aktive.find((k) => k.art === 'giro')?.id ?? aktive[0]?.id ?? 'ohne'
   const zuKonto = (id: string | null) => (id && aktivIds.has(id) ? id : standardKonto)
+  // Jedes Konto läuft erst ab seinem eigenen letzten Stand weiter (z. B. wenn beim Abgleich
+  // nur ein Teil der Konten neu eingetragen wurde). Davor ist sein Stand schon "echt".
+  const basisVon: Record<string, number> = { ohne: -Infinity }
+  for (const k of aktive) basisVon[k.id] = kontoBasis(k)
+  const buche = (id: string, betrag: number, m: number) => {
+    if (m > basisVon[id]) stand[id] += betrag
+  }
   const anteilAusgegeben = FREI_MODI.find((m) => m.wert === freiModus)?.anteilAusgegeben ?? 1
 
   const stand: Record<string, number> = { ohne: 0 }
@@ -109,11 +135,11 @@ export function rechnePrognose(
     // 1. Posten, die in diesem Monat fällig sind
     for (const p of posten) {
       if (!istFaelligIm(p, m)) continue
-      if (p.typ === 'einnahme') stand[zuKonto(p.auf_konto_id)] += p.betrag
-      else if (p.typ === 'ausgabe') stand[zuKonto(p.von_konto_id)] -= p.betrag
+      if (p.typ === 'einnahme') buche(zuKonto(p.auf_konto_id), p.betrag, m)
+      else if (p.typ === 'ausgabe') buche(zuKonto(p.von_konto_id), -p.betrag, m)
       else {
-        stand[zuKonto(p.von_konto_id)] -= p.betrag
-        stand[zuKonto(p.auf_konto_id)] += p.betrag
+        buche(zuKonto(p.von_konto_id), -p.betrag, m)
+        buche(zuKonto(p.auf_konto_id), p.betrag, m)
       }
       if (p.rhythmus !== 'monatlich' && p.typ !== 'umbuchung') {
         ereignisse.push({ text: p.name, betrag: p.typ === 'einnahme' ? p.betrag : -p.betrag })
@@ -129,11 +155,11 @@ export function rechnePrognose(
         if (rate > 0) {
           toepfeRateMonat += rate
           t.angespart = r2(t.angespart + rate)
-          stand[standardKonto] -= rate
-          stand[zuKonto(t.konto_id)] += rate
+          buche(standardKonto, -rate, m)
+          buche(zuKonto(t.konto_id), rate, m)
         }
       } else if (m === ziel) {
-        stand[zuKonto(t.konto_id)] -= t.zielbetrag
+        buche(zuKonto(t.konto_id), -t.zielbetrag, m)
         ereignisse.push({ text: `Topf: ${t.name}`, betrag: -t.zielbetrag })
       }
     }
@@ -141,10 +167,10 @@ export function rechnePrognose(
     // 3. Freies Geld: der ausgegebene Teil verlässt das Standardkonto
     const frei = monatsSumme(posten, m).frei - toepfeRateMonat
     const ausgegebenFrei = r2(Math.max(0, frei) * anteilAusgegeben)
-    stand[standardKonto] -= ausgegebenFrei
+    buche(standardKonto, -ausgegebenFrei, m)
 
     // 4. Depot-Rendite
-    for (const [id, zins] of Object.entries(monatsZins)) stand[id] = stand[id] * (1 + zins)
+    for (const [id, zins] of Object.entries(monatsZins)) if (m > basisVon[id]) stand[id] = stand[id] * (1 + zins)
 
     for (const id of Object.keys(stand)) stand[id] = r2(stand[id])
     const gesamt = summe()
