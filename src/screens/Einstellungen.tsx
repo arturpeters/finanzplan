@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { exportiereDaten } from '../lib/export'
 import { loescheCache } from '../lib/konten'
 import { loescheCache as loeschePostenCache } from '../lib/posten'
 import { loescheCache as loescheToepfeCache } from '../lib/toepfe'
@@ -31,6 +32,8 @@ export default function Einstellungen({ theme, setTheme, email }: Props) {
   const [server, setServer] = useState<Status>('pruefe')
   const [installiert, setInstalliert] = useState<Status>('pruefe')
   const [offlineFaehig, setOfflineFaehig] = useState<Status>('pruefe')
+  const [exportLaeuft, setExportLaeuft] = useState(false)
+  const [exportMeldung, setExportMeldung] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     pruefeVerbindung().then((ok) => setServer(ok ? 'ok' : 'fehler'))
@@ -57,6 +60,27 @@ export default function Einstellungen({ theme, setTheme, email }: Props) {
         <StatusZeile label="Server erreichbar" status={server} hinweis="Verbindung zu Supabase (Frankfurt)" />
         <StatusZeile label="Als App installiert" status={installiert} hinweis="Vom Startbildschirm geöffnet, nicht im Browser" />
         <StatusZeile label="Offline-fähig" status={offlineFaehig} hinweis="Hintergrunddienst registriert (ab 2. Start)" />
+      </section>
+
+      <section className="karte">
+        <span className="zeile-titel">Sicherung</span>
+        <span className="klein">
+          Speichert alle deine Konten, Posten, Töpfe und Abgleiche als Datei. Supabase macht im kostenlosen Plan keine automatischen Backups – ein Export ab und zu (z. B. nach dem Monatsabgleich) schützt deine Planung.
+        </span>
+        <button
+          className="knopf-zweit"
+          disabled={exportLaeuft}
+          onClick={async () => {
+            setExportLaeuft(true)
+            setExportMeldung(null)
+            const f = await exportiereDaten()
+            setExportLaeuft(false)
+            setExportMeldung(f ? { ok: false, text: f } : { ok: true, text: 'Export erstellt.' })
+          }}
+        >
+          {exportLaeuft ? 'Exportiere …' : 'Daten exportieren'}
+        </button>
+        {exportMeldung && <p className={`meldung ${exportMeldung.ok ? 'meldung-ok' : 'meldung-fehler'}`} role="status">{exportMeldung.text}</p>}
       </section>
 
       <section className="karte">

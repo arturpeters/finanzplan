@@ -21,6 +21,8 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // Schrift und Symbole auch offline verfügbar machen
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,webmanifest}'],
       },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {

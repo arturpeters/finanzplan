@@ -14,7 +14,7 @@ Läuft als installierbare Web-App (PWA) auf Android und am Laptop. Die Daten wer
 | 3 | Töpfe | fertig, auf dem Gerät noch nicht getestet |
 | 4 | Prognose mit Diagramm | fertig, auf dem Gerät noch nicht getestet |
 | 5 | Monatsabgleich | fertig, auf dem Gerät noch nicht getestet |
-| 7 | Export/Backup, Feinschliff | offen |
+| 7 | Export/Backup, Feinschliff | fertig |
 | 1.1 | Szenarien | danach |
 
 ## Begriffe

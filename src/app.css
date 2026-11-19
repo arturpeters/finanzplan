@@ -1018,3 +1018,20 @@ button:disabled {
   min-height: 28px;
   padding: 0 4px;
 }
+
+/* ---------- Phase 7: Feinschliff ---------- */
+
+@media (min-width: 900px) {
+  /* Einzelne Hauptknöpfe nicht über die ganze Breite ziehen */
+  .inhalt > .knopf-primaer,
+  .inhalt > .knopf-zweit,
+  .karte > .knopf-primaer,
+  .karte > .knopf-zweit {
+    align-self: flex-start;
+    min-width: 240px;
+  }
+
+  .knopf-reihe > * {
+    flex: 0 1 240px;
+  }
+}
