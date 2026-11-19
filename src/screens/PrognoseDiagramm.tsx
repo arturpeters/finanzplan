@@ -14,17 +14,20 @@ interface Props {
   prognose: Prognose
   jetzt: number // Monat des Startpunkts (Punkt 0)
   startLabel: string
+  vergleich?: Prognose | null // Szenario, gestrichelt
+  vergleichName?: string
 }
 
-export default function PrognoseDiagramm({ prognose, jetzt, startLabel }: Props) {
+export default function PrognoseDiagramm({ prognose, jetzt, startLabel, vergleich, vergleichName }: Props) {
   const flaeche = useRef<HTMLDivElement>(null)
   const [auswahl, setAuswahl] = useState<number | null>(null)
 
   // Punkt 0 = heute, danach je ein Punkt pro Monat
   const werte = [prognose.start, ...prognose.monate.map((m) => m.gesamt)]
+  const vWerte = vergleich ? [vergleich.start, ...vergleich.monate.map((m) => m.gesamt)] : []
   const n = werte.length - 1
-  const echtMin = Math.min(...werte)
-  const echtMax = Math.max(...werte)
+  const echtMin = Math.min(...werte, ...vWerte)
+  const echtMax = Math.max(...werte, ...vWerte)
   let min = echtMin
   let max = echtMax
   if (max - min < 1) {
@@ -38,6 +41,7 @@ export default function PrognoseDiagramm({ prognose, jetzt, startLabel }: Props)
   const x = (i: number) => (n === 0 ? 0 : (i / n) * B)
   const y = (v: number) => H - ((v - min) / (max - min)) * H
   const linie = werte.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const vLinie = vWerte.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
   const flaechePfad = `M0,${H} L${linie.split(' ').join(' L')} L${B},${H} Z`
   const nullLinie = min < 0 && max > 0 ? y(0) : null
 
@@ -70,6 +74,13 @@ export default function PrognoseDiagramm({ prognose, jetzt, startLabel }: Props)
             {monat.ereignisse.length > 0 && ` · ${monat.ereignisse.map((e) => `${e.text} ${formatEuroGanz(e.betrag)}`).join(', ')}`}
           </span>
         )}
+        {vergleich && (
+          <span className="klein">
+            <i className="legende" style={{ background: 'var(--punkt-3)' }} />
+            {vergleichName}: {formatEuro(vWerte[gewaehlt])} ({vWerte[gewaehlt] - werte[gewaehlt] >= 0 ? '+' : ''}
+            {formatEuro(Math.round((vWerte[gewaehlt] - werte[gewaehlt]) * 100) / 100)})
+          </span>
+        )}
       </div>
 
       <div
@@ -85,6 +96,7 @@ export default function PrognoseDiagramm({ prognose, jetzt, startLabel }: Props)
           <path d={flaechePfad} fill="var(--accent)" fillOpacity="0.1" />
           {nullLinie !== null && <line x1="0" x2={B} y1={nullLinie} y2={nullLinie} stroke="var(--warn)" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />}
           <line x1={x(gewaehlt)} x2={x(gewaehlt)} y1="0" y2={H} stroke="var(--muted)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          {vLinie && <polyline points={vLinie} fill="none" stroke="var(--punkt-3)" strokeWidth="2.5" strokeDasharray="7 5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
           <polyline points={linie} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
         </svg>
         <span className="diagramm-wert" aria-hidden="true" style={{ top: `${(y(echtMax) / H) * 100}%` }}>{formatEuroGanz(echtMax)}</span>

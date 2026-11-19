@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-const TABELLEN = ['konten', 'posten', 'toepfe', 'abgleiche'] as const
+const TABELLEN = ['konten', 'posten', 'toepfe', 'abgleiche', 'szenarien'] as const
 
 /**
  * Lädt alle eigenen Daten frisch vom Server und speichert sie als JSON-Datei.

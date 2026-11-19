@@ -4,6 +4,7 @@ import { loescheCache } from '../lib/konten'
 import { loescheCache as loeschePostenCache } from '../lib/posten'
 import { loescheCache as loescheToepfeCache } from '../lib/toepfe'
 import { loescheCache as loescheAbgleichCache } from '../lib/abgleich'
+import { loescheCache as loescheSzenarienCache } from '../lib/szenarien'
 import { pruefeVerbindung, supabase } from '../lib/supabase'
 import type { ThemeWahl } from '../lib/theme'
 
@@ -93,6 +94,7 @@ export default function Einstellungen({ theme, setTheme, email }: Props) {
             loeschePostenCache()
             loescheToepfeCache()
             loescheAbgleichCache()
+            loescheSzenarienCache()
             await supabase.auth.signOut()
           }}
         >

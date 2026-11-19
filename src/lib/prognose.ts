@@ -96,6 +96,12 @@ export function rechnePrognose(
   jetzt: number,
   anzahlMonate: number,
   freiModus: FreiModus,
+  /**
+   * Für Szenarien: Posten, aus denen das ausgegebene freie Geld berechnet wird (normalerweise der Grundplan).
+   * Annahme: Dein Lebensstil bleibt gleich – Mehrkosten im Szenario gehen also vom Ersparten ab,
+   * statt still vom freien Geld geschluckt zu werden.
+   */
+  freiReferenz?: Posten[],
 ): Prognose {
   const aktive = konten.filter((k) => k.aktiv)
   const aktivIds = new Set(aktive.map((k) => k.id))
@@ -121,6 +127,7 @@ export function rechnePrognose(
   const simToepfe = toepfe
     .filter((t) => t.aktiv && !t.erledigt)
     .map((t) => ({ ...t, letzte_einzahlung: null, letzte_einzahlung_monat: null }))
+  const freiPosten = freiReferenz ?? posten
 
   const summe = () => r2(Object.values(stand).reduce((s, x) => s + x, 0))
   const start = summe()
@@ -165,7 +172,7 @@ export function rechnePrognose(
     }
 
     // 3. Freies Geld: der ausgegebene Teil verlässt das Standardkonto
-    const frei = monatsSumme(posten, m).frei - toepfeRateMonat
+    const frei = monatsSumme(freiPosten, m).frei - toepfeRateMonat
     const ausgegebenFrei = r2(Math.max(0, frei) * anteilAusgegeben)
     buche(standardKonto, -ausgegebenFrei, m)
 

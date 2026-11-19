@@ -6,6 +6,7 @@ import { KATEGORIEN, RHYTHMEN, type Posten, type PostenEingabe, type PostenTyp, 
 interface Props {
   posten?: Posten
   vorgabeTyp?: PostenTyp
+  szenarioId?: string // gesetzt = Posten gehört zu diesem Szenario
   konten: Konto[]
   onSpeichern: (eingabe: PostenEingabe) => Promise<string | null>
   onLoeschen?: () => Promise<string | null>
@@ -25,7 +26,7 @@ const TYPEN: { wert: PostenTyp; label: string }[] = [
   { wert: 'umbuchung', label: 'Umbuchung' },
 ]
 
-export default function PostenFormular({ posten, vorgabeTyp, konten, onSpeichern, onLoeschen, onSchliessen }: Props) {
+export default function PostenFormular({ posten, vorgabeTyp, szenarioId, konten, onSpeichern, onLoeschen, onSchliessen }: Props) {
   const aktiveKonten = konten.filter((k) => k.aktiv)
   const standardKonto = aktiveKonten.find((k) => k.art === 'giro')?.id ?? aktiveKonten[0]?.id ?? ''
 
@@ -81,6 +82,7 @@ export default function PostenFormular({ posten, vorgabeTyp, konten, onSpeichern
       kategorie: kategorie.trim() || null,
       notiz: posten?.notiz ?? null,
       aktiv,
+      szenario_id: posten?.szenario_id ?? szenarioId ?? null,
     })
     setLaedt(false)
     if (f) setFehler(f)
@@ -112,7 +114,7 @@ export default function PostenFormular({ posten, vorgabeTyp, konten, onSpeichern
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="posten-titel" onClick={onSchliessen}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-kopf">
-          <h2 id="posten-titel">{posten ? 'Posten bearbeiten' : 'Neuer Posten'}</h2>
+          <h2 id="posten-titel">{posten ? 'Posten bearbeiten' : szenarioId ? 'Neuer Posten im Szenario' : 'Neuer Posten'}</h2>
           <button className="icon-knopf" aria-label="Schließen" onClick={onSchliessen}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>

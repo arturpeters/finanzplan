@@ -1035,3 +1035,63 @@ button:disabled {
     flex: 0 1 240px;
   }
 }
+
+/* ---------- Version 1.1: Szenarien ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chip.aktiv {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.neu-zeile {
+  display: flex;
+  gap: 8px;
+}
+
+.neu-zeile input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 14px;
+}
+
+.neu-zeile .knopf-zweit {
+  height: 44px;
+}
+
+.trenner {
+  border-bottom: 1px solid var(--line);
+}
+
+.trenner:last-child {
+  border-bottom: 0;
+}
+
+.durchgestrichen {
+  text-decoration: line-through;
+  color: var(--muted);
+}

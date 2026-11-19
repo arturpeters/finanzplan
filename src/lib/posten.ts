@@ -27,12 +27,13 @@ export interface Posten {
   kategorie: string | null
   notiz: string | null
   aktiv: boolean
+  szenario_id: string | null // null = Grundplan
 }
 
 export type PostenEingabe = Omit<Posten, 'id'>
 
 const CACHE_KEY = 'finanzplan.posten'
-const SPALTEN = 'id,name,typ,betrag,rhythmus,faellig_monat,gueltig_ab,gueltig_bis,von_konto_id,auf_konto_id,kategorie,notiz,aktiv'
+const SPALTEN = 'id,name,typ,betrag,rhythmus,faellig_monat,gueltig_ab,gueltig_bis,von_konto_id,auf_konto_id,kategorie,notiz,aktiv,szenario_id'
 
 export function rhythmusLabel(r: Rhythmus): string {
   return RHYTHMEN.find((x) => x.wert === r)?.label ?? r

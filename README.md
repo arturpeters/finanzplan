@@ -15,7 +15,7 @@ Läuft als installierbare Web-App (PWA) auf Android und am Laptop. Die Daten wer
 | 4 | Prognose mit Diagramm | fertig, auf dem Gerät noch nicht getestet |
 | 5 | Monatsabgleich | fertig, auf dem Gerät noch nicht getestet |
 | 7 | Export/Backup, Feinschliff | fertig |
-| 1.1 | Szenarien | danach |
+| 1.1 | Szenarien | fertig, auf dem Gerät noch nicht getestet |
 
 ## Begriffe
 
@@ -26,6 +26,7 @@ Läuft als installierbare Web-App (PWA) auf Android und am Laptop. Die Daten wer
 - **Topf:** Sparziel mit Betrag und Monat. Monatsrate = noch fehlender Betrag ÷ Monate vor dem Zielmonat (Ziel Juli, jetzt November → 8 Monate), auf volle Cent aufgerundet. „+ eingezahlt“ merkt sich Betrag und Monat, damit die Rate im laufenden Monat nicht fälschlich sinkt. Frei pro Monat = Einnahmen − Fixkosten − Sparen − Töpfe.
 - **Prognose:** Startet beim heutigen Stand der aktiven Konten und rechnet ab dem nächsten Monat. Posten zählen im Monat ihrer echten Fälligkeit, Töpfe schieben ihre Rate aufs Topf-Konto und geben im Zielmonat den Zielbetrag aus, Depots wachsen mit ihrer Rendite. Das freie Geld wird je nach Einstellung ausgegeben (Standard), halb oder ganz gespart. Warnung, wenn ein Konto (außer Kredit) ins Minus rutscht.
 - **Monatsabgleich:** Echte Kontostände eintragen, am besten Anfang des Monats. Gespeichert wird als Stand zum 1. des Monats (= Ende des Vormonats); der laufende Monat wird in der Prognose dann noch mitgerechnet. Ein Kontostand, der beim Anlegen mitten im Monat eingetragen wurde, gilt als Stand zum Monatsende. Jedes Konto läuft in der Prognose ab seinem eigenen letzten Stand weiter. Der erwartete Wert wird mitgespeichert (Plan vs. Ist).
+- **Szenario:** „Was wäre, wenn …“ – zusätzliche Posten plus Grundplan-Posten, die wegfallen. Ändert den echten Plan nicht; erscheint in der Prognose als gestrichelte Linie. Annahme: Der Lebensstil bleibt gleich, d. h. das ausgegebene freie Geld wird aus dem Grundplan berechnet – Mehrkosten gehen vom Ersparten ab.
 - **Umbuchung:** Geld zwischen eigenen Konten (z. B. Sparrate). Ändert das Vermögen nicht, ist aber verplant.
 
 ## Technik

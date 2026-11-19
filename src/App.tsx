@@ -5,6 +5,8 @@ import { ladePosten, leseCache as lesePostenCache, type Posten } from './lib/pos
 import { ladeToepfe, leseCache as leseToepfeCache, type Topf } from './lib/toepfe'
 import { ladeAbgleiche, leseCache as leseAbgleichCache, type Abgleich } from './lib/abgleich'
 import AbgleichScreen from './screens/AbgleichScreen'
+import { grundplan, ladeSzenarien, leseCache as leseSzenarienCache, type Szenario } from './lib/szenarien'
+import SzenarioScreen from './screens/SzenarioScreen'
 import { supabase } from './lib/supabase'
 import { ladeThemeWahl, speichereThemeWahl, systemIstDunkel, wendeThemeAn, type ThemeWahl } from './lib/theme'
 import Einstellungen from './screens/Einstellungen'
@@ -16,7 +18,7 @@ import Toepfe from './screens/Toepfe'
 import Uebersicht from './screens/Uebersicht'
 import './app.css'
 
-type TabId = 'uebersicht' | 'planen' | 'prognose' | 'toepfe' | 'konten' | 'einstellungen' | 'abgleich'
+type TabId = 'uebersicht' | 'planen' | 'prognose' | 'toepfe' | 'konten' | 'einstellungen' | 'abgleich' | 'szenario'
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: 'uebersicht', label: 'Übersicht', icon: <path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" /> },
@@ -34,6 +36,7 @@ const TITEL: Record<TabId, string> = {
   konten: 'Konten',
   einstellungen: 'Einstellungen',
   abgleich: 'Monatsabgleich',
+  szenario: 'Szenario',
 }
 
 function Icon({ children }: { children: ReactNode }) {
@@ -53,6 +56,24 @@ export default function App() {
   const [posten, setPosten] = useState<Posten[]>(lesePostenCache)
   const [toepfe, setToepfe] = useState<Topf[]>(leseToepfeCache)
   const [abgleiche, setAbgleiche] = useState<Abgleich[]>(leseAbgleichCache)
+  const [szenarien, setSzenarien] = useState<Szenario[]>(leseSzenarienCache)
+  const [szenarioId, setSzenarioId] = useState<string | null>(null) // im Editor geöffnet
+  const [vergleichId, setVergleichIdState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('finanzplan.prognose.vergleich')
+    } catch {
+      return null
+    }
+  })
+  const setVergleichId = (id: string | null) => {
+    setVergleichIdState(id)
+    try {
+      if (id) localStorage.setItem('finanzplan.prognose.vergleich', id)
+      else localStorage.removeItem('finanzplan.prognose.vergleich')
+    } catch {
+      /* ignorieren */
+    }
+  }
   const [offline, setOffline] = useState(false)
 
   // Theme anwenden und bei "wie System" auf Systemwechsel reagieren
@@ -76,12 +97,13 @@ export default function App() {
   }, [])
 
   const neuLaden = useCallback(async () => {
-    const [k, p, t, a] = await Promise.all([ladeKonten(), ladePosten(), ladeToepfe(), ladeAbgleiche()])
+    const [k, p, t, a, s] = await Promise.all([ladeKonten(), ladePosten(), ladeToepfe(), ladeAbgleiche(), ladeSzenarien()])
     setKonten(k.konten)
     setPosten(p.posten)
     setToepfe(t.toepfe)
     setAbgleiche(a.abgleiche)
-    setOffline(k.offline || p.offline || t.offline || a.offline)
+    setSzenarien(s.szenarien)
+    setOffline(k.offline || p.offline || t.offline || a.offline || s.offline)
   }, [])
 
   // Daten laden, sobald eingeloggt – und immer, wenn die App wieder in den Vordergrund kommt.
@@ -101,6 +123,9 @@ export default function App() {
   if (!authGeladen) return null
   if (!session) return <Login />
 
+  // Grundplan: alles außer Szenario-Posten. Nur die Prognose und der Szenario-Editor sehen alle.
+  const basisPosten = grundplan(posten)
+  const offenesSzenario = szenarien.find((s) => s.id === szenarioId) ?? null
   const istDunkel = theme === 'dunkel' || (theme === 'system' && systemIstDunkel())
   const monat = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
 
@@ -146,13 +171,47 @@ export default function App() {
           </div>
         </header>
 
-        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={posten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} zuPrognose={() => setTab('prognose')} zuAbgleich={() => setTab('abgleich')} abgleiche={abgleiche} />}
-        {tab === 'planen' && <Planen posten={posten} toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
-        {tab === 'prognose' && <PrognoseScreen konten={konten} posten={posten} toepfe={toepfe} />}
+        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={basisPosten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} zuPrognose={() => setTab('prognose')} zuAbgleich={() => setTab('abgleich')} abgleiche={abgleiche} />}
+        {tab === 'planen' && <Planen posten={basisPosten} toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
+        {tab === 'prognose' && (
+          <PrognoseScreen
+            konten={konten}
+            posten={posten}
+            toepfe={toepfe}
+            szenarien={szenarien}
+            vergleichId={vergleichId}
+            setVergleichId={setVergleichId}
+            oeffneSzenario={(id) => {
+              setSzenarioId(id)
+              setTab('szenario')
+            }}
+            neuLaden={neuLaden}
+            offline={offline}
+          />
+        )}
         {tab === 'toepfe' && <Toepfe toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'konten' && <Konten konten={konten} offline={offline} neuLaden={neuLaden} zuAbgleich={() => setTab('abgleich')} />}
         {tab === 'abgleich' && (
-          <AbgleichScreen konten={konten} posten={posten} toepfe={toepfe} abgleiche={abgleiche} offline={offline} neuLaden={neuLaden} fertig={() => setTab('uebersicht')} />
+          <AbgleichScreen konten={konten} posten={basisPosten} toepfe={toepfe} abgleiche={abgleiche} offline={offline} neuLaden={neuLaden} fertig={() => setTab('uebersicht')} />
+        )}
+        {tab === 'szenario' && offenesSzenario && (
+          <SzenarioScreen
+            key={offenesSzenario.id}
+            szenario={offenesSzenario}
+            posten={posten}
+            konten={konten}
+            toepfe={toepfe}
+            offline={offline}
+            neuLaden={neuLaden}
+            zurPrognose={() => {
+              setVergleichId(offenesSzenario.id)
+              setTab('prognose')
+            }}
+            geloescht={() => {
+              if (vergleichId === offenesSzenario.id) setVergleichId(null)
+              setTab('prognose')
+            }}
+          />
         )}
         {tab === 'einstellungen' && <Einstellungen theme={theme} setTheme={setTheme} email={session.user.email} />}
       </main>

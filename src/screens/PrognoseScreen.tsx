@@ -3,13 +3,20 @@ import { formatEuro, formatEuroGanz } from '../lib/format'
 import type { Konto } from '../lib/konten'
 import { indexZuDatum, monatsIndex, type Posten } from '../lib/posten'
 import { basisMonat, FREI_MODI, ladeFreiModus, rechnePrognose, speichereFreiModus, type FreiModus } from '../lib/prognose'
+import { grundplan, legeSzenarioAn, postenImSzenario, type Szenario } from '../lib/szenarien'
 import type { Topf } from '../lib/toepfe'
 import PrognoseDiagramm from './PrognoseDiagramm'
 
 interface Props {
   konten: Konto[]
-  posten: Posten[]
+  posten: Posten[] // alle, inkl. Szenario-Posten
   toepfe: Topf[]
+  szenarien: Szenario[]
+  vergleichId: string | null
+  setVergleichId: (id: string | null) => void
+  oeffneSzenario: (id: string) => void
+  neuLaden: () => Promise<void>
+  offline: boolean
 }
 
 const HORIZONTE = [12, 24, 36]
@@ -36,7 +43,10 @@ function merke(key: string, wert: unknown) {
 const monatJahr = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
 const kurzMonat = new Intl.DateTimeFormat('de-DE', { month: 'short', year: 'numeric' })
 
-export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
+export default function PrognoseScreen({ konten, posten: allePosten, toepfe, szenarien, vergleichId, setVergleichId, oeffneSzenario, neuLaden, offline }: Props) {
+  const posten = grundplan(allePosten)
+  const [neuerName, setNeuerName] = useState('')
+  const [szenarioFehler, setSzenarioFehler] = useState<string | null>(null)
   const [horizont, setHorizont] = useState<number>(() => lies(KEY_HORIZONT, HORIZONTE, 12))
   const [freiModus, setFreiModus] = useState<FreiModus>(ladeFreiModus)
   const [tabelleOffen, setTabelleOffen] = useState(false)
@@ -47,6 +57,14 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
   const prognose = useMemo(
     () => rechnePrognose(konten, posten, toepfe, basis, horizont + Math.max(0, jetzt - basis), freiModus),
     [konten, posten, toepfe, basis, jetzt, horizont, freiModus],
+  )
+  const vergleichSzenario = szenarien.find((s) => s.id === vergleichId) ?? null
+  const vergleich = useMemo(
+    () =>
+      vergleichSzenario
+        ? rechnePrognose(konten, postenImSzenario(allePosten, vergleichSzenario), toepfe, basis, horizont + Math.max(0, jetzt - basis), freiModus, posten)
+        : null,
+    [vergleichSzenario, konten, allePosten, toepfe, basis, jetzt, horizont, freiModus],
   )
   const startLabel = basis === jetzt ? 'Heute' : basis === jetzt - 1 ? 'Monatsanfang' : 'Letzter Stand'
   const veraltet = basis < jetzt - 1
@@ -77,6 +95,14 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
               {formatEuro(ende.gesamt - prognose.start)} gegenüber {startLabel === 'Heute' ? 'heute' : startLabel === 'Monatsanfang' ? 'Monatsanfang' : 'letztem Stand'} ({formatEuro(prognose.start)})
             </span>
           </div>
+          {vergleich && vergleichSzenario && (
+            <span className="klein">
+              <i className="legende" style={{ background: 'var(--punkt-3)' }} />
+              {vergleichSzenario.name}: <strong>{formatEuro(vergleich.monate[vergleich.monate.length - 1].gesamt)}</strong> (
+              {vergleich.monate[vergleich.monate.length - 1].gesamt - ende.gesamt >= 0 ? '+' : ''}
+              {formatEuro(Math.round((vergleich.monate[vergleich.monate.length - 1].gesamt - ende.gesamt) * 100) / 100)})
+            </span>
+          )}
           <div className="segment segment-klein" role="radiogroup" aria-label="Zeitraum">
             {HORIZONTE.map((h) => (
               <button
@@ -95,7 +121,7 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
           </div>
         </div>
 
-        <PrognoseDiagramm prognose={prognose} jetzt={basis} startLabel={startLabel} />
+        <PrognoseDiagramm prognose={prognose} jetzt={basis} startLabel={startLabel} vergleich={vergleich} vergleichName={vergleichSzenario?.name} />
         <span className="klein">Tippen oder darüberfahren zeigt einzelne Monate. Punkte markieren besondere Zahlungen.</span>
       </section>
 
@@ -111,6 +137,38 @@ export default function PrognoseScreen({ konten, posten, toepfe }: Props) {
           Prüf, ob dort genug Geld liegt oder ob eine Zahlung von einem anderen Konto laufen sollte.
         </p>
       )}
+
+      <section className="karte">
+        <span className="zeile-titel">Szenario vergleichen</span>
+        <span className="klein">„Was wäre, wenn …“ – z. B. ein Auto ab März oder ein gekündigter Vertrag. Dein echter Plan bleibt unverändert.</span>
+        <div className="chips" role="radiogroup" aria-label="Szenario vergleichen">
+          <button role="radio" aria-checked={!vergleichSzenario} className={`chip ${!vergleichSzenario ? 'aktiv' : ''}`} onClick={() => setVergleichId(null)}>Keins</button>
+          {szenarien.map((s) => (
+            <button key={s.id} role="radio" aria-checked={vergleichId === s.id} className={`chip ${vergleichId === s.id ? 'aktiv' : ''}`} onClick={() => setVergleichId(s.id)}>
+              {s.name}
+            </button>
+          ))}
+        </div>
+        {vergleichSzenario && <button className="knopf-zweit" onClick={() => oeffneSzenario(vergleichSzenario.id)}>„{vergleichSzenario.name}“ bearbeiten</button>}
+        <form
+          className="neu-zeile"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            if (!neuerName.trim()) return
+            setSzenarioFehler(null)
+            const r = await legeSzenarioAn(neuerName.trim())
+            if (r.fehler || !r.id) return setSzenarioFehler(r.fehler ?? 'Unbekannter Fehler')
+            setNeuerName('')
+            await neuLaden()
+            setVergleichId(r.id)
+            oeffneSzenario(r.id)
+          }}
+        >
+          <input aria-label="Name für neues Szenario" placeholder="Neues Szenario, z. B. Auto" maxLength={60} value={neuerName} onChange={(e) => setNeuerName(e.target.value)} />
+          <button className="knopf-zweit" type="submit" disabled={offline || !neuerName.trim()}>Anlegen</button>
+        </form>
+        {szenarioFehler && <p className="meldung meldung-fehler" role="alert">{szenarioFehler}</p>}
+      </section>
 
       <section className="karte">
         <span className="zeile-titel">Was passiert mit dem freien Geld?</span>
