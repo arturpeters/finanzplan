@@ -15,6 +15,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false, // Registrierung passiert in src/main.tsx
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: APP_NAME,
