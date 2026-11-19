@@ -15,11 +15,27 @@ export interface Position {
   geplant_monat: string | null // YYYY-MM-01
   gekauft: boolean
   gekauft_preis: number | null
+  link: string | null // nur https://
 }
 
 const KEY_L = 'finanzplan.listen'
 const KEY_P = 'finanzplan.positionen'
 const r2 = (x: number) => Math.round(x * 100) / 100
+
+/** Prüft einen eingegebenen Link. Leer = kein Link. Ohne Schema wird https:// ergänzt. */
+export function pruefeLink(eingabe: string): { link: string | null; fehler: string | null } {
+  let s = eingabe.trim()
+  if (s === '') return { link: null, fehler: null }
+  if (!/^[a-z]+:\/\//i.test(s)) s = 'https://' + s
+  try {
+    const u = new URL(s)
+    if (u.protocol !== 'https:') return { link: null, fehler: 'Nur sichere Links mit https:// sind erlaubt.' }
+    if (s.length > 500) return { link: null, fehler: 'Der Link ist zu lang.' }
+    return { link: u.toString(), fehler: null }
+  } catch {
+    return { link: null, fehler: 'Das sieht nicht wie ein Link aus.' }
+  }
+}
 
 // ---------- Rechnung ----------
 
@@ -105,7 +121,7 @@ export function loescheCache() {
 export async function ladeListen(): Promise<{ listen: Liste[]; positionen: Position[]; offline: boolean }> {
   const [l, p] = await Promise.all([
     supabase.from('listen').select('id,name,erledigt').order('erstellt_am'),
-    supabase.from('listen_positionen').select('id,liste_id,name,preis,geplant_monat,gekauft,gekauft_preis').order('geplant_monat', { nullsFirst: false }).order('erstellt_am'),
+    supabase.from('listen_positionen').select('id,liste_id,name,preis,geplant_monat,gekauft,gekauft_preis,link').order('geplant_monat', { nullsFirst: false }).order('erstellt_am'),
   ])
   if (l.error || p.error || !l.data || !p.data) return { listen: leseListenCache(), positionen: lesePositionenCache(), offline: true }
   const positionen = p.data.map((z) => ({ ...z, preis: Number(z.preis), gekauft_preis: z.gekauft_preis === null ? null : Number(z.gekauft_preis) })) as Position[]

@@ -28,12 +28,13 @@ export interface Posten {
   notiz: string | null
   aktiv: boolean
   szenario_id: string | null // null = Grundplan
+  kuendbar_bis?: string | null // YYYY-MM-DD: spätester Kündigungstag
 }
 
 export type PostenEingabe = Omit<Posten, 'id'>
 
 const CACHE_KEY = 'finanzplan.posten'
-const SPALTEN = 'id,name,typ,betrag,rhythmus,faellig_monat,gueltig_ab,gueltig_bis,von_konto_id,auf_konto_id,kategorie,notiz,aktiv,szenario_id'
+const SPALTEN = 'id,name,typ,betrag,rhythmus,faellig_monat,gueltig_ab,gueltig_bis,von_konto_id,auf_konto_id,kategorie,notiz,aktiv,szenario_id,kuendbar_bis'
 
 export function rhythmusLabel(r: Rhythmus): string {
   return RHYTHMEN.find((x) => x.wert === r)?.label ?? r
@@ -168,6 +169,20 @@ export function naechsteGrosseZahlung(posten: Posten[], ab: number, monate = 12)
     }
   }
   return null
+}
+
+/** Verträge, deren Kündigungsfrist in den nächsten `tage` Tagen endet (heute eingeschlossen). */
+export function baldKuendbar(posten: Posten[], heute: Date, tage = 30): { posten: Posten; tageUebrig: number }[] {
+  const start = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate())
+  return posten
+    .filter((p) => p.aktiv && p.kuendbar_bis)
+    .map((p) => {
+      const [j, m, t] = p.kuendbar_bis!.split('-').map(Number)
+      const frist = new Date(j, m - 1, t)
+      return { posten: p, tageUebrig: Math.round((frist.getTime() - start.getTime()) / 86400000) }
+    })
+    .filter((x) => x.tageUebrig >= 0 && x.tageUebrig <= tage)
+    .sort((a, b) => a.tageUebrig - b.tageUebrig)
 }
 
 // ---------- Datenbank ----------

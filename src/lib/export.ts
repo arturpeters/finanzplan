@@ -1,6 +1,9 @@
+import { gibDateiAus } from './datei'
 import { supabase } from './supabase'
 
-const TABELLEN = ['konten', 'posten', 'toepfe', 'abgleiche', 'szenarien', 'listen', 'listen_positionen'] as const
+// Reihenfolge = Reihenfolge beim Einspielen (Fremdschlüssel zuerst)
+const TABELLEN = ['konten', 'szenarien', 'posten', 'toepfe', 'abgleiche', 'listen', 'listen_positionen', 'einstellungen'] as const
+type Tabelle = (typeof TABELLEN)[number]
 
 /**
  * Lädt alle eigenen Daten frisch vom Server und speichert sie als JSON-Datei.
@@ -22,27 +25,71 @@ export async function exportiereDaten(): Promise<string | null> {
     anzahl: Object.fromEntries(TABELLEN.map((t) => [t, daten[t].length])),
     daten,
   }
-  const datei = new Blob([JSON.stringify(inhalt, null, 2)], { type: 'application/json' })
-  const name = `finanzplan-backup-${jetzt.toISOString().slice(0, 10)}.json`
+  await gibDateiAus(JSON.stringify(inhalt, null, 2), `finanzplan-backup-${jetzt.toISOString().slice(0, 10)}.json`, 'application/json')
+  return null
+}
 
-  // Auf dem Handy bevorzugt über "Teilen" (z. B. in Google Drive speichern), sonst normaler Download
-  const file = new File([datei], name, { type: 'application/json' })
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: name })
-      return null
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return null
-      // sonst unten normal herunterladen
-    }
+// ---------- Einspielen ----------
+
+export interface Sicherung {
+  exportiert_am: string
+  anzahl: Record<string, number>
+  daten: Partial<Record<Tabelle, Record<string, unknown>[]>>
+}
+
+/** Liest eine Sicherungsdatei und prüft, ob sie von dieser App stammt. */
+export function leseSicherung(text: string): { sicherung: Sicherung | null; fehler: string | null } {
+  let roh: unknown
+  try {
+    roh = JSON.parse(text)
+  } catch {
+    return { sicherung: null, fehler: 'Die Datei ist keine gültige Sicherung (kein JSON).' }
   }
-  const url = URL.createObjectURL(datei)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  const s = roh as { app?: unknown; format?: unknown; daten?: unknown; exportiert_am?: unknown }
+  if (s.app !== 'finanzplan' || s.format !== 1 || typeof s.daten !== 'object' || s.daten === null) {
+    return { sicherung: null, fehler: 'Die Datei ist keine Sicherung dieser App.' }
+  }
+  const daten: Sicherung['daten'] = {}
+  const anzahl: Record<string, number> = {}
+  for (const t of TABELLEN) {
+    const liste = (s.daten as Record<string, unknown>)[t]
+    if (liste === undefined) continue
+    if (!Array.isArray(liste) || liste.some((z) => typeof z !== 'object' || z === null)) {
+      return { sicherung: null, fehler: `Die Sicherung ist beschädigt (${t}).` }
+    }
+    // user_id nie übernehmen – die Datenbank setzt immer den angemeldeten Nutzer
+    daten[t] = (liste as Record<string, unknown>[]).map(({ user_id: _u, ...rest }) => rest)
+    anzahl[t] = liste.length
+  }
+  return { sicherung: { exportiert_am: String(s.exportiert_am ?? ''), anzahl, daten }, fehler: null }
+}
+
+/**
+ * Spielt eine Sicherung ein, ohne etwas zu löschen:
+ * Einträge mit derselben ID werden auf den Stand der Sicherung gesetzt, fehlende werden wieder angelegt,
+ * alles, was seitdem neu dazugekommen ist, bleibt.
+ */
+export async function spieleEin(s: Sicherung): Promise<string | null> {
+  for (const t of TABELLEN) {
+    const zeilen = s.daten[t]
+    if (!zeilen || zeilen.length === 0) continue
+
+    if (t === 'konten') {
+      // Unterkonten verweisen auf Hauptkonten: erst ohne Verweis anlegen, dann Verweise setzen
+      const ohneVerweis = zeilen.map((z) => ({ ...z, oberkonto_id: null }))
+      const { error } = await supabase.from('konten').upsert(ohneVerweis, { onConflict: 'id' })
+      if (error) return `Einspielen fehlgeschlagen (konten): ${error.message}`
+      for (const z of zeilen.filter((z) => z.oberkonto_id)) {
+        const { error: f } = await supabase.from('konten').update({ oberkonto_id: z.oberkonto_id }).eq('id', z.id as string)
+        if (f) return `Einspielen fehlgeschlagen (Unterkonten): ${f.message}`
+      }
+      continue
+    }
+
+    const konflikt = t === 'einstellungen' ? 'user_id' : t === 'abgleiche' ? 'konto_id,datum' : 'id'
+    const daten = t === 'abgleiche' ? zeilen.map(({ id: _id, ...rest }) => rest) : zeilen
+    const { error } = await supabase.from(t).upsert(daten, { onConflict: konflikt })
+    if (error) return `Einspielen fehlgeschlagen (${t}): ${error.message}`
+  }
   return null
 }

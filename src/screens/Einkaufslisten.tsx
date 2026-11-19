@@ -6,6 +6,7 @@ import {
   legeListeAn,
   listenSumme,
   loescheListe,
+  pruefeLink,
   loeschePosition,
   speicherePosition,
   type Liste,
@@ -46,6 +47,7 @@ function PositionFormular({ position, onSchliessen, onSpeichern, onLoeschen }: {
   const [monat, setMonat] = useState(position.geplant_monat?.slice(0, 7) ?? '')
   const [gekauft, setGekauft] = useState(position.gekauft)
   const [echterPreis, setEchterPreis] = useState(position.gekauft_preis !== null ? betragFuerEingabe(position.gekauft_preis) : '')
+  const [link, setLink] = useState(position.link ?? '')
   const [fehler, setFehler] = useState<string | null>(null)
 
   async function absenden(e: FormEvent) {
@@ -54,7 +56,9 @@ function PositionFormular({ position, onSchliessen, onSpeichern, onLoeschen }: {
     const ep = echterPreis.trim() === '' ? null : parseBetrag(echterPreis)
     if (p === null || p < 0) return setFehler('Den Preis verstehe ich nicht.')
     if (echterPreis.trim() !== '' && (ep === null || ep < 0)) return setFehler('Den echten Preis verstehe ich nicht.')
-    const f = await onSpeichern({ name: name.trim(), preis: p, geplant_monat: monat ? `${monat}-01` : null, gekauft, gekauft_preis: gekauft ? ep : null })
+    const l = pruefeLink(link)
+    if (l.fehler) return setFehler(l.fehler)
+    const f = await onSpeichern({ name: name.trim(), preis: p, geplant_monat: monat ? `${monat}-01` : null, gekauft, gekauft_preis: gekauft ? ep : null, link: l.link })
     if (f) setFehler(f)
     else onSchliessen()
   }
@@ -74,6 +78,7 @@ function PositionFormular({ position, onSchliessen, onSpeichern, onLoeschen }: {
             <label className="feld"><span>Geplanter Preis (€)</span><input required inputMode="decimal" value={preis} onChange={(e) => setPreis(e.target.value)} /></label>
             <label className="feld"><span>Kaufen im (optional)</span><input type="month" value={monat} onChange={(e) => setMonat(e.target.value)} /></label>
           </div>
+          <label className="feld"><span>Link (optional)</span><input type="text" inputMode="url" autoCapitalize="off" autoCorrect="off" spellCheck={false} placeholder="https://…" maxLength={500} value={link} onChange={(e) => setLink(e.target.value)} /></label>
           <div className="schalter-zeile">
             <div className="zeile-text"><span className="zeile-titel">Gekauft</span><span className="klein">Zählt dann als ausgegeben, nicht mehr im Plan</span></div>
             <button type="button" role="switch" aria-checked={gekauft} aria-label="Gekauft" className={`schalter ${gekauft ? 'an' : ''}`} onClick={() => setGekauft(!gekauft)}><span /></button>
@@ -106,6 +111,7 @@ export default function Einkaufslisten({ listen, positionen, offline, neuLaden }
   const [posName, setPosName] = useState('')
   const [posPreis, setPosPreis] = useState('')
   const [posMonat, setPosMonat] = useState(aktuellerMonat())
+  const [posLink, setPosLink] = useState('')
   const [bearbeiten, setBearbeiten] = useState<Position | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
@@ -205,6 +211,11 @@ export default function Einkaufslisten({ listen, positionen, offline, neuLaden }
           </span>
           <span className="betrag">{formatEuro(p.gekauft ? p.gekauft_preis ?? p.preis : p.preis)}</span>
         </button>
+        {p.link && (
+          <a className="icon-knopf flach link-knopf" href={p.link} target="_blank" rel="noopener noreferrer" aria-label={`Link zu ${p.name} öffnen`}>
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+          </a>
+        )}
       </div>
     )
   }
@@ -232,10 +243,13 @@ export default function Einkaufslisten({ listen, positionen, offline, neuLaden }
           e.preventDefault()
           const preis = parseBetrag(posPreis)
           if (!posName.trim() || preis === null || preis < 0) return setFehler('Bitte Name und Preis angeben, z. B. „Schreibtisch“ und 129,99')
-          const f = await aktion(speicherePosition({ liste_id: liste.id, name: posName.trim(), preis, geplant_monat: posMonat ? `${posMonat}-01` : null, gekauft: false, gekauft_preis: null }))
+          const l = pruefeLink(posLink)
+          if (l.fehler) return setFehler(l.fehler)
+          const f = await aktion(speicherePosition({ liste_id: liste.id, name: posName.trim(), preis, geplant_monat: posMonat ? `${posMonat}-01` : null, gekauft: false, gekauft_preis: null, link: l.link }))
           if (!f) {
             setPosName('')
             setPosPreis('')
+            setPosLink('')
           }
         }}
       >
@@ -245,6 +259,7 @@ export default function Einkaufslisten({ listen, positionen, offline, neuLaden }
           <label className="feld"><span>Preis (€)</span><input inputMode="decimal" placeholder="0,00" value={posPreis} onChange={(e) => setPosPreis(e.target.value)} /></label>
           <label className="feld"><span>Kaufen im</span><input type="month" value={posMonat} onChange={(e) => setPosMonat(e.target.value)} /></label>
         </div>
+        <label className="feld"><span>Link (optional)</span><input type="text" inputMode="url" autoCapitalize="off" autoCorrect="off" spellCheck={false} placeholder="https://…" maxLength={500} value={posLink} onChange={(e) => setPosLink(e.target.value)} /></label>
         <button className="knopf-primaer" type="submit" disabled={offline}>Hinzufügen</button>
       </form>
 

@@ -1,6 +1,7 @@
 import type { Konto } from './konten'
 import { istFaelligIm, monatsFluss, type Posten } from './posten'
 import { topfInfo, type Topf } from './toepfe'
+import { supabase } from './supabase'
 
 /**
  * Prognose Monat für Monat.
@@ -41,6 +42,9 @@ export function speichereFreiModus(w: FreiModus) {
   } catch {
     /* ignorieren */
   }
+  // Auch in der Datenbank merken, damit Handy und Laptop dieselbe Einstellung haben.
+  // Nur diese Spalte – die übrigen Einstellungen bleiben unverändert.
+  void supabase.from('einstellungen').upsert({ frei_modus: w, geaendert_am: new Date().toISOString() }, { onConflict: 'user_id' })
 }
 
 export interface Ereignis {

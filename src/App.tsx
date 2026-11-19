@@ -9,6 +9,8 @@ import { grundplan, ladeSzenarien, leseCache as leseSzenarienCache, type Szenari
 import SzenarioScreen from './screens/SzenarioScreen'
 import { ladeListen, leseListenCache, lesePositionenCache, listenAlsPosten, type Liste, type Position } from './lib/listen'
 import { monatsIndex } from './lib/posten'
+import { setzeBetraegeVerborgen } from './lib/format'
+import { ladeEinstellungen, leseCache as leseEinstellungenCache, type Einstellungen as EinstellungenDaten } from './lib/einstellungen'
 import { supabase } from './lib/supabase'
 import { ladeThemeWahl, speichereThemeWahl, systemIstDunkel, wendeThemeAn, type ThemeWahl } from './lib/theme'
 import Einstellungen from './screens/Einstellungen'
@@ -62,6 +64,25 @@ export default function App() {
   const [listen, setListen] = useState<Liste[]>(leseListenCache)
   const [positionen, setPositionen] = useState<Position[]>(lesePositionenCache)
   const [toepfeAnsicht, setToepfeAnsicht] = useState<'toepfe' | 'listen'>('toepfe')
+  const [einstellungen, setEinstellungen] = useState<EinstellungenDaten>(leseEinstellungenCache)
+  const [verborgen, setVerborgen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('finanzplan.verborgen') === '1'
+    } catch {
+      return false
+    }
+  })
+  // Muss vor dem Rendern gesetzt sein, damit alle Beträge passend formatiert werden
+  setzeBetraegeVerborgen(verborgen)
+  const schalteVerborgen = () => {
+    const neu = !verborgen
+    setVerborgen(neu)
+    try {
+      localStorage.setItem('finanzplan.verborgen', neu ? '1' : '0')
+    } catch {
+      /* ignorieren */
+    }
+  }
   const [szenarioId, setSzenarioId] = useState<string | null>(null) // im Editor geöffnet
   const [vergleichId, setVergleichIdState] = useState<string | null>(() => {
     try {
@@ -102,7 +123,7 @@ export default function App() {
   }, [])
 
   const neuLaden = useCallback(async () => {
-    const [k, p, t, a, s, l] = await Promise.all([ladeKonten(), ladePosten(), ladeToepfe(), ladeAbgleiche(), ladeSzenarien(), ladeListen()])
+    const [k, p, t, a, s, l, e] = await Promise.all([ladeKonten(), ladePosten(), ladeToepfe(), ladeAbgleiche(), ladeSzenarien(), ladeListen(), ladeEinstellungen()])
     setKonten(k.konten)
     setPosten(p.posten)
     setToepfe(t.toepfe)
@@ -110,6 +131,7 @@ export default function App() {
     setSzenarien(s.szenarien)
     setListen(l.listen)
     setPositionen(l.positionen)
+    setEinstellungen(e.einstellungen)
     setOffline(k.offline || p.offline || t.offline || a.offline || s.offline || l.offline)
   }, [])
 
@@ -164,6 +186,13 @@ export default function App() {
             <h1>{TITEL[tab]}</h1>
           </div>
           <div className="kopf-knoepfe">
+            <button className="icon-knopf" aria-label={verborgen ? 'Beträge anzeigen' : 'Beträge ausblenden'} aria-pressed={verborgen} onClick={schalteVerborgen}>
+              {verborgen ? (
+                <Icon><path d="M3 3l18 18M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.7 17.7 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a10 10 0 0 0 5.4-1.6" /></Icon>
+              ) : (
+                <Icon><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></Icon>
+              )}
+            </button>
             <button
               className="icon-knopf"
               aria-label={istDunkel ? 'Zu hellem Modus wechseln' : 'Zu dunklem Modus wechseln'}
@@ -181,7 +210,7 @@ export default function App() {
           </div>
         </header>
 
-        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={planPosten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} zuPrognose={() => setTab('prognose')} zuAbgleich={() => setTab('abgleich')} abgleiche={abgleiche} />}
+        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={planPosten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} zuPrognose={() => setTab('prognose')} zuAbgleich={() => setTab('abgleich')} zuListen={() => { setToepfeAnsicht('listen'); setTab('toepfe') }} abgleiche={abgleiche} listen={listen} positionen={positionen} einstellungen={einstellungen} zuEinstellungen={() => setTab('einstellungen')} />}
         {tab === 'planen' && <Planen posten={basisPosten} listenPosten={listenPosten} zuListen={() => { setToepfeAnsicht('listen'); setTab('toepfe') }} toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'prognose' && (
           <PrognoseScreen
@@ -223,7 +252,7 @@ export default function App() {
             }}
           />
         )}
-        {tab === 'einstellungen' && <Einstellungen theme={theme} setTheme={setTheme} email={session.user.email} />}
+        {tab === 'einstellungen' && <Einstellungen theme={theme} setTheme={setTheme} email={session.user.email} konten={konten} einstellungen={einstellungen} offline={offline} neuLaden={neuLaden} />}
       </main>
 
       <nav className="leiste">

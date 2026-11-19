@@ -41,6 +41,7 @@ export default function PostenFormular({ posten, vorgabeTyp, szenarioId, konten,
   const [aufKonto, setAufKonto] = useState(posten?.auf_konto_id ?? (posten ? '' : standardKonto))
   const [kategorie, setKategorie] = useState(posten?.kategorie ?? '')
   const [aktiv, setAktiv] = useState(posten?.aktiv ?? true)
+  const [kuendbarBis, setKuendbarBis] = useState(posten?.kuendbar_bis ?? '')
   const [fehler, setFehler] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(false)
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
@@ -83,6 +84,7 @@ export default function PostenFormular({ posten, vorgabeTyp, szenarioId, konten,
       notiz: posten?.notiz ?? null,
       aktiv,
       szenario_id: posten?.szenario_id ?? szenarioId ?? null,
+      kuendbar_bis: typ === 'ausgabe' && !einmalig && kuendbarBis ? kuendbarBis : null,
     })
     setLaedt(false)
     if (f) setFehler(f)
@@ -181,6 +183,14 @@ export default function PostenFormular({ posten, vorgabeTyp, szenarioId, konten,
               {kontoAuswahl(vonKonto, setVonKonto, 'Von Konto')}
               {kontoAuswahl(aufKonto, setAufKonto, 'Auf Konto')}
             </div>
+          )}
+
+          {typ === 'ausgabe' && !einmalig && (
+            <label className="feld">
+              <span>Kündbar bis (optional)</span>
+              <input type="date" value={kuendbarBis} onChange={(e) => setKuendbarBis(e.target.value)} />
+              <span className="klein normal">Letzter Tag, an dem du kündigen kannst. Die Übersicht erinnert dich 30 Tage vorher.</span>
+            </label>
           )}
 
           <label className="feld">

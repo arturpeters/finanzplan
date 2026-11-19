@@ -17,6 +17,7 @@ Läuft als installierbare Web-App (PWA) auf Android und am Laptop. Die Daten wer
 | 7 | Export/Backup, Feinschliff | fertig |
 | 1.1 | Szenarien | fertig, auf dem Gerät noch nicht getestet |
 | 1.2 | Echter Monat statt Durchschnitt, Einkaufslisten | fertig, auf dem Gerät noch nicht getestet |
+| 1.3 | Einkaufslisten auf Übersicht, Links, Beträge ausblenden, Sparquote, Notgroschen, Kündigungsfristen, Kategorien, Kalender-Erinnerung, Einstellungen-Abgleich, Sicherung einspielen | fertig, auf dem Gerät noch nicht getestet |
 
 ## Begriffe
 
@@ -29,6 +30,10 @@ Läuft als installierbare Web-App (PWA) auf Android und am Laptop. Die Daten wer
 - **Monatsabgleich:** Echte Kontostände eintragen, am besten Anfang des Monats. Gespeichert wird als Stand zum 1. des Monats (= Ende des Vormonats); der laufende Monat wird in der Prognose dann noch mitgerechnet. Ein Kontostand, der beim Anlegen mitten im Monat eingetragen wurde, gilt als Stand zum Monatsende. Jedes Konto läuft in der Prognose ab seinem eigenen letzten Stand weiter. Der erwartete Wert wird mitgespeichert (Plan vs. Ist).
 - **Szenario:** „Was wäre, wenn …“ – zusätzliche Posten plus Grundplan-Posten, die wegfallen. Ändert den echten Plan nicht; erscheint in der Prognose als gestrichelte Linie. Annahme: Der Lebensstil bleibt gleich, d. h. das ausgegebene freie Geld wird aus dem Grundplan berechnet – Mehrkosten gehen vom Ersparten ab.
 - **Einkaufsliste:** Mehrere Listen mit Positionen (Preis, geplanter Monat). Offene Positionen mit Monat zählen dort als einmalige Ausgabe (überfällige im laufenden Monat), Positionen ohne Monat sind nicht im Plan. Abgehakt = ausgegeben, optional mit echtem Preis; zählt dann nicht mehr im Plan. Bewusst kein Verlauf – planen, nicht tracken.
+- **Notgroschen:** Ziel = Monate × (Fixkosten pro Monat, Jahresabos anteilig + Lebenshaltung). Zählt die gewählten Konten, ohne Auswahl alle Tagesgeld-/Sparkonten.
+- **Sparquote:** (Sparen + Töpfe) ÷ Einnahmen im laufenden Monat.
+- **Sicherung einspielen:** Nichts wird gelöscht. Einträge mit gleicher ID werden auf den Stand der Sicherung gesetzt, fehlende kommen zurück, Neues bleibt.
+- **Einstellungen-Abgleich:** Prognose-Modus und Notgroschen liegen in der Tabelle `einstellungen` und gelten auf allen Geräten. „Beträge ausblenden“ und Hell/Dunkel bleiben bewusst pro Gerät.
 - **Umbuchung:** Geld zwischen eigenen Konten (z. B. Sparrate). Ändert das Vermögen nicht, ist aber verplant.
 
 ## Technik

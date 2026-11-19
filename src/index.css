@@ -18,6 +18,7 @@
   --punkt-1: #0f766e;
   --punkt-2: #2563eb;
   --punkt-3: #c2410c;
+  --punkt-4: #7c3aed;
   color-scheme: light;
 }
 
@@ -39,6 +40,7 @@
   --punkt-1: #34d399;
   --punkt-2: #60a5fa;
   --punkt-3: #fb923c;
+  --punkt-4: #a78bfa;
   color-scheme: dark;
 }
 

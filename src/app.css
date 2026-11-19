@@ -1210,3 +1210,63 @@ button:disabled {
   background: var(--accent);
   border-color: var(--accent);
 }
+
+/* ---------- Paket 1: Liste auf Übersicht, Links, Kategorien ---------- */
+
+.karte-knopf {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.link-knopf {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.kategorien {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.kategorie-zeile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kategorie-text {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ---------- Paket 2 ---------- */
+
+.klein.normal {
+  font-weight: 400;
+}
+
+.datei-feld input[type='file'] {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  padding: 10px 0;
+}
+
+.kopf {
+  gap: 8px;
+}
+
+.kopf h1 {
+  overflow-wrap: anywhere;
+}
+
+.kopf-knoepfe {
+  flex-shrink: 0;
+}

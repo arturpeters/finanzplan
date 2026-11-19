@@ -10,6 +10,7 @@ import {
   monatsIndex,
   naechsteFaelligkeit,
   naechsteGrosseZahlung,
+  proMonat,
   rhythmusLabel,
   speicherePosten,
   type Posten,
@@ -49,6 +50,16 @@ export default function Planen({ posten, listenPosten, toepfe, konten, offline, 
   const grosse = naechsteGrosseZahlung(alle, m, 12)
   const einkaeufe = listenPosten.filter((p) => istFaelligIm(p, m))
   const inaktive = posten.filter((p) => !p.aktiv)
+  const [kategorienOffen, setKategorienOffen] = useState(false)
+  // Fixkosten nach Kategorie, auf den Monat umgerechnet (Jahresabo 540 € → 45 €), für den gewählten Monat gültig
+  const proKategorie = new Map<string, number>()
+  for (const p of posten) {
+    if (p.typ !== 'ausgabe' || p.rhythmus === 'einmalig' || !istGueltigIm(p, m)) continue
+    const k = p.kategorie?.trim() || 'Ohne Kategorie'
+    proKategorie.set(k, (proKategorie.get(k) ?? 0) + proMonat(p))
+  }
+  const kategorien = [...proKategorie.entries()].sort((a, b) => b[1] - a[1])
+  const kategorienSumme = kategorien.reduce((s, [, v]) => s + v, 0)
 
   function Zeile({ p }: { p: Posten }) {
     const start = monatsIndex(p.gueltig_ab)
@@ -67,6 +78,7 @@ export default function Planen({ posten, listenPosten, toepfe, konten, offline, 
       if (ende !== null && ende < m) details.push('abgelaufen')
     }
     if (p.kategorie) details.push(p.kategorie)
+    if (p.kuendbar_bis) details.push(`kündbar bis ${new Date(p.kuendbar_bis).toLocaleDateString('de-DE')}`)
 
     return (
       <button className={`posten-zeile ${!gueltig || !faellig ? 'blass' : ''}`} onClick={() => setBearbeiten(p)} aria-label={`${p.name} bearbeiten`}>
@@ -127,6 +139,29 @@ export default function Planen({ posten, listenPosten, toepfe, konten, offline, 
           </section>
         )
       })}
+
+      {kategorien.length > 0 && (
+        <section className="karte liste">
+          <button className="abschnitt-kopf knopf-flach" aria-expanded={kategorienOffen} onClick={() => setKategorienOffen(!kategorienOffen)}>
+            <span className="zeile-titel">Fixkosten nach Kategorie</span>
+            <span className="klein">{kategorienOffen ? 'zuklappen' : `${formatEuro(Math.round(kategorienSumme * 100) / 100)} / Monat`}</span>
+          </button>
+          {kategorienOffen && (
+            <div className="kategorien">
+              <span className="klein">Auf den Monat umgerechnet – ein Jahresabo zählt hier mit einem Zwölftel.</span>
+              {kategorien.map(([name, wert]) => (
+                <div key={name} className="kategorie-zeile">
+                  <div className="kategorie-text">
+                    <span>{name}</span>
+                    <span className="klein">{formatEuro(Math.round(wert * 100) / 100)} · {Math.round((wert / kategorienSumme) * 100)} %</span>
+                  </div>
+                  <div className="fortschritt" aria-hidden="true"><span style={{ width: `${(wert / kategorien[0][1]) * 100}%` }} /></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {einkaeufe.length > 0 && (
         <section className="karte liste">

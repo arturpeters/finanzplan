@@ -1,14 +1,20 @@
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 const euroGanz = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 
+// "Beträge ausblenden": alle angezeigten Beträge werden zu •••, Eingabefelder bleiben unberührt
+let verborgen = false
+export function setzeBetraegeVerborgen(v: boolean) {
+  verborgen = v
+}
+
 /** 1234.5 → "1.234,50 €" */
 export function formatEuro(betrag: number): string {
-  return euro.format(betrag)
+  return verborgen ? '••• €' : euro.format(betrag)
 }
 
 /** 1234.5 → "1.235 €" (für große Kennzahlen) */
 export function formatEuroGanz(betrag: number): string {
-  return euroGanz.format(betrag)
+  return verborgen ? '••• €' : euroGanz.format(betrag)
 }
 
 /**
