@@ -675,3 +675,84 @@ button:disabled {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* ---------- Phase 3: Töpfe ---------- */
+
+.legende {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 6px;
+}
+
+.ganze-breite {
+  grid-column: 1 / -1;
+}
+
+.topf-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.topf {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topf.blass {
+  opacity: 0.6;
+}
+
+.topf-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  min-height: 32px;
+}
+
+.fortschritt {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.fortschritt span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.fortschritt .warn-bg {
+  background: var(--warn);
+}
+
+.topf-knoepfe {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 900px) {
+  .vier-spalten .ganze-breite {
+    grid-column: auto;
+  }
+
+  .vier-spalten:has(.ganze-breite) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}

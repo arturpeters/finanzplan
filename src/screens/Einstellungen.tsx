@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { loescheCache } from '../lib/konten'
 import { loescheCache as loeschePostenCache } from '../lib/posten'
+import { loescheCache as loescheToepfeCache } from '../lib/toepfe'
 import { pruefeVerbindung, supabase } from '../lib/supabase'
 import type { ThemeWahl } from '../lib/theme'
 
@@ -65,6 +66,7 @@ export default function Einstellungen({ theme, setTheme, email }: Props) {
           onClick={async () => {
             loescheCache()
             loeschePostenCache()
+            loescheToepfeCache()
             await supabase.auth.signOut()
           }}
         >

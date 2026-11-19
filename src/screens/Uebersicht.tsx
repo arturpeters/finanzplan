@@ -1,17 +1,22 @@
 import { formatEuro } from '../lib/format'
 import { summeVermoegen, type Konto } from '../lib/konten'
 import { monatsIndex, monatsSumme, type Posten } from '../lib/posten'
+import { toepfeRate, type Topf } from '../lib/toepfe'
 
 interface Props {
   konten: Konto[]
   posten: Posten[]
+  toepfe: Topf[]
   zuKonten: () => void
   zuPlanen: () => void
 }
 
-export default function Uebersicht({ konten, posten, zuKonten, zuPlanen }: Props) {
+export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen }: Props) {
   const aktiveKonten = konten.filter((k) => k.aktiv)
-  const summe = monatsSumme(posten, monatsIndex(new Date()))
+  const jetzt = monatsIndex(new Date())
+  const summe = monatsSumme(posten, jetzt)
+  const toepfeMonat = toepfeRate(toepfe, jetzt)
+  const frei = Math.round((summe.frei - toepfeMonat) * 100) / 100
   const hatPosten = posten.some((p) => p.aktiv)
   const anteil = (x: number) => (summe.einnahmen > 0 ? Math.max(0, x) : 0)
 
@@ -21,20 +26,22 @@ export default function Uebersicht({ konten, posten, zuKonten, zuPlanen }: Props
         <span className="klein">Frei verfügbar pro Monat</span>
         {hatPosten ? (
           <>
-            <span className={`riesig ${summe.frei < 0 ? 'minus' : ''}`}>{formatEuro(summe.frei)}</span>
+            <span className={`riesig ${frei < 0 ? 'minus' : ''}`}>{formatEuro(frei)}</span>
             {summe.einnahmen > 0 && (
               <div className="balken" aria-hidden="true">
                 <span style={{ flex: anteil(summe.fixkosten), background: 'var(--muted)' }} />
                 <span style={{ flex: anteil(summe.sparen), background: 'var(--punkt-2)' }} />
-                <span style={{ flex: anteil(summe.frei), background: 'var(--accent)' }} />
+                <span style={{ flex: anteil(toepfeMonat), background: 'var(--punkt-3)' }} />
+                <span style={{ flex: anteil(frei), background: 'var(--accent)' }} />
               </div>
             )}
-            <div className="drei-spalten">
-              <div><span className="klein">Einnahmen</span><span className="wert">{formatEuro(summe.einnahmen)}</span></div>
-              <div><span className="klein">Fixkosten</span><span className="wert">−{formatEuro(summe.fixkosten)}</span></div>
-              <div><span className="klein">Sparen</span><span className="wert">−{formatEuro(summe.sparen)}</span></div>
+            <div className="vier-spalten">
+              <div><span className="klein"><i className="legende" style={{ background: 'var(--text)' }} />Einnahmen</span><span className="wert">{formatEuro(summe.einnahmen)}</span></div>
+              <div><span className="klein"><i className="legende" style={{ background: 'var(--muted)' }} />Fixkosten</span><span className="wert">−{formatEuro(summe.fixkosten)}</span></div>
+              <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-2)' }} />Sparen</span><span className="wert">−{formatEuro(summe.sparen)}</span></div>
+              <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-3)' }} />Töpfe</span><span className="wert">−{formatEuro(toepfeMonat)}</span></div>
             </div>
-            {summe.frei < 0 && <p className="meldung meldung-fehler">Deine festen Ausgaben und Sparraten sind höher als deine Einnahmen.</p>}
+            {frei < 0 && <p className="meldung meldung-fehler">Fixkosten, Sparraten und Töpfe sind zusammen höher als deine Einnahmen.</p>}
           </>
         ) : (
           <>

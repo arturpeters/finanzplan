@@ -11,7 +11,7 @@ Läuft als installierbare Web-App (PWA) auf Android und am Laptop. Die Daten wer
 | 0 | Grundgerüst, Hosting, Supabase-Projekt, Hell/Dunkel | fertig |
 | 1 | Login und Konten (Unterkonten, aktiv, ausgeblendet) | fertig, auf dem Gerät noch nicht getestet |
 | 2 | Posten (Einnahmen, Fixkosten, Umbuchungen) und „Frei pro Monat“ | fertig, auf dem Gerät noch nicht getestet |
-| 3 | Töpfe | offen |
+| 3 | Töpfe | fertig, auf dem Gerät noch nicht getestet |
 | 4 | Prognose mit Diagramm | offen |
 | 5 | Monatsabgleich | offen |
 | 7 | Export/Backup, Feinschliff | offen |
@@ -23,6 +23,7 @@ Läuft als installierbare Web-App (PWA) auf Android und am Laptop. Die Daten wer
 - **Ausgeblendet:** Ein Konto zählt weiter mit, wird nur nicht angezeigt.
 - **Kredit:** Die Restschuld wird positiv eingegeben und als Minusbetrag gespeichert.
 - **Frei pro Monat:** Einnahmen − Fixkosten − Sparen (Umbuchungen). Nicht-monatliche Posten werden auf den Monat umgerechnet (jährlich 540 € → 45 €). Einmalige Posten zählen hier nicht, sondern erscheinen in der Prognose in ihrem Monat.
+- **Topf:** Sparziel mit Betrag und Monat. Monatsrate = noch fehlender Betrag ÷ Monate vor dem Zielmonat (Ziel Juli, jetzt November → 8 Monate), auf volle Cent aufgerundet. „+ eingezahlt“ merkt sich Betrag und Monat, damit die Rate im laufenden Monat nicht fälschlich sinkt. Frei pro Monat = Einnahmen − Fixkosten − Sparen − Töpfe.
 - **Umbuchung:** Geld zwischen eigenen Konten (z. B. Sparrate). Ändert das Vermögen nicht, ist aber verplant.
 
 ## Technik

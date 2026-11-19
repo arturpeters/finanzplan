@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ladeKonten, leseCache, type Konto } from './lib/konten'
 import { ladePosten, leseCache as lesePostenCache, type Posten } from './lib/posten'
+import { ladeToepfe, leseCache as leseToepfeCache, type Topf } from './lib/toepfe'
 import { supabase } from './lib/supabase'
 import { ladeThemeWahl, speichereThemeWahl, systemIstDunkel, wendeThemeAn, type ThemeWahl } from './lib/theme'
 import Einstellungen from './screens/Einstellungen'
 import Konten from './screens/Konten'
 import Login from './screens/Login'
 import Planen from './screens/Planen'
+import Toepfe from './screens/Toepfe'
 import Uebersicht from './screens/Uebersicht'
 import './app.css'
 
@@ -36,15 +38,6 @@ function Icon({ children }: { children: ReactNode }) {
   )
 }
 
-function Platzhalter({ phase, text }: { phase: number; text: string }) {
-  return (
-    <section className="karte leer">
-      <span className="zeile-titel">Kommt in Phase {phase}</span>
-      <span className="klein">{text}</span>
-    </section>
-  )
-}
-
 export default function App() {
   const [theme, setTheme] = useState<ThemeWahl>(ladeThemeWahl)
   const [session, setSession] = useState<Session | null>(null)
@@ -52,6 +45,7 @@ export default function App() {
   const [tab, setTab] = useState<TabId>('uebersicht')
   const [konten, setKonten] = useState<Konto[]>(leseCache)
   const [posten, setPosten] = useState<Posten[]>(lesePostenCache)
+  const [toepfe, setToepfe] = useState<Topf[]>(leseToepfeCache)
   const [offline, setOffline] = useState(false)
 
   // Theme anwenden und bei "wie System" auf Systemwechsel reagieren
@@ -75,10 +69,11 @@ export default function App() {
   }, [])
 
   const neuLaden = useCallback(async () => {
-    const [k, p] = await Promise.all([ladeKonten(), ladePosten()])
+    const [k, p, t] = await Promise.all([ladeKonten(), ladePosten(), ladeToepfe()])
     setKonten(k.konten)
     setPosten(p.posten)
-    setOffline(k.offline || p.offline)
+    setToepfe(t.toepfe)
+    setOffline(k.offline || p.offline || t.offline)
   }, [])
 
   // Daten laden, sobald eingeloggt – und immer, wenn die App wieder in den Vordergrund kommt.
@@ -143,9 +138,9 @@ export default function App() {
           </div>
         </header>
 
-        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={posten} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} />}
-        {tab === 'planen' && <Planen posten={posten} konten={konten} offline={offline} neuLaden={neuLaden} />}
-        {tab === 'toepfe' && <Platzhalter phase={3} text="Hier legst du Sparziele an, z. B. Urlaub im Juli. Die Monatsrate rechnet die App aus." />}
+        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={posten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} />}
+        {tab === 'planen' && <Planen posten={posten} toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
+        {tab === 'toepfe' && <Toepfe toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'konten' && <Konten konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'einstellungen' && <Einstellungen theme={theme} setTheme={setTheme} email={session.user.email} />}
       </main>

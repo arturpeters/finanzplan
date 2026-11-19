@@ -13,10 +13,12 @@ import {
   type Posten,
   type PostenTyp,
 } from '../lib/posten'
+import { toepfeRate, type Topf } from '../lib/toepfe'
 import PostenFormular from './PostenFormular'
 
 interface Props {
   posten: Posten[]
+  toepfe: Topf[]
   konten: Konto[]
   offline: boolean
   neuLaden: () => Promise<void>
@@ -33,10 +35,12 @@ const ABSCHNITTE: { typ: PostenTyp; titel: string; leer: string }[] = [
   { typ: 'umbuchung', titel: 'Sparen & Umbuchungen', leer: 'Noch nichts – z. B. die monatliche Sparrate aufs Tagesgeld.' },
 ]
 
-export default function Planen({ posten, konten, offline, neuLaden }: Props) {
+export default function Planen({ posten, toepfe, konten, offline, neuLaden }: Props) {
   const [bearbeiten, setBearbeiten] = useState<Posten | PostenTyp | null>(null)
   const jetzt = monatsIndex(new Date())
   const summe = monatsSumme(posten, jetzt)
+  const toepfeMonat = toepfeRate(toepfe, jetzt)
+  const frei = Math.round((summe.frei - toepfeMonat) * 100) / 100
   const inaktive = posten.filter((p) => !p.aktiv)
 
   function Zeile({ p }: { p: Posten }) {
@@ -80,7 +84,8 @@ export default function Planen({ posten, konten, offline, neuLaden }: Props) {
           <div><span className="klein">Einnahmen</span><span className="wert">{formatEuro(summe.einnahmen)}</span></div>
           <div><span className="klein">Fixkosten</span><span className="wert">−{formatEuro(summe.fixkosten)}</span></div>
           <div><span className="klein">Sparen</span><span className="wert">−{formatEuro(summe.sparen)}</span></div>
-          <div><span className="klein">Frei</span><span className={`wert akzent ${summe.frei < 0 ? 'minus' : ''}`}>{formatEuro(summe.frei)}</span></div>
+          <div><span className="klein">Töpfe</span><span className="wert">−{formatEuro(toepfeMonat)}</span></div>
+          <div className="ganze-breite"><span className="klein">Frei</span><span className={`wert akzent ${frei < 0 ? 'minus' : ''}`}>{formatEuro(frei)}</span></div>
         </div>
         {offline && <span className="klein warn">Offline – zuletzt geladener Stand, Ändern geht erst wieder mit Verbindung.</span>}
       </section>
