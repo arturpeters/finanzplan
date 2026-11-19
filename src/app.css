@@ -156,7 +156,8 @@
   background: var(--card);
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
 }
 
 .leiste button {
@@ -755,4 +756,208 @@ button:disabled {
   .vier-spalten:has(.ganze-breite) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
+}
+
+/* ---------- Phase 4: Prognose ---------- */
+
+.akzent-text {
+  color: var(--accent);
+}
+
+.zwei-werte {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.zwei-werte > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rechtsbuendig {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.sparkline-knopf {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  height: 64px;
+}
+
+.sparkline-knopf svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.prognose-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.prognose-kopf > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.segment-klein {
+  min-width: 190px;
+}
+
+.segment-klein button {
+  height: 34px;
+  font-size: 13px;
+}
+
+.diagramm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.diagramm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 70px;
+}
+
+.diagramm-flaeche {
+  position: relative;
+  height: 220px;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+
+.diagramm-flaeche svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.diagramm-punkt {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--card);
+  pointer-events: none;
+}
+
+.diagramm-punkt.raus {
+  background: var(--warn);
+}
+
+.diagramm-punkt.gewaehlt {
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  background: var(--card);
+  border: 3px solid var(--accent);
+}
+
+.diagramm-achse {
+  position: relative;
+  height: 16px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.diagramm-achse span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.diagramm-achse span:first-child {
+  transform: none;
+}
+
+.diagramm-achse span:last-child {
+  transform: translateX(-100%);
+}
+
+.knopf-flach {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+.tabelle-box {
+  overflow-x: auto;
+  margin: 0 -4px;
+}
+
+.tabelle {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tabelle th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabelle td {
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.tabelle tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabelle .rechts {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.annahmen summary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.annahmen ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diagramm-wert {
+  position: absolute;
+  right: 0;
+  transform: translateY(-120%);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--card);
+  padding: 0 4px;
+  border-radius: 4px;
+  pointer-events: none;
 }

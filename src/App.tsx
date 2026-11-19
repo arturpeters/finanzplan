@@ -9,15 +9,17 @@ import Einstellungen from './screens/Einstellungen'
 import Konten from './screens/Konten'
 import Login from './screens/Login'
 import Planen from './screens/Planen'
+import PrognoseScreen from './screens/PrognoseScreen'
 import Toepfe from './screens/Toepfe'
 import Uebersicht from './screens/Uebersicht'
 import './app.css'
 
-type TabId = 'uebersicht' | 'planen' | 'toepfe' | 'konten' | 'einstellungen'
+type TabId = 'uebersicht' | 'planen' | 'prognose' | 'toepfe' | 'konten' | 'einstellungen'
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: 'uebersicht', label: 'Übersicht', icon: <path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" /> },
   { id: 'planen', label: 'Planen', icon: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
+  { id: 'prognose', label: 'Prognose', icon: <><path d="M3 3v18h18" /><polyline points="7,15 11,11 14,13 20,7" /></> },
   { id: 'toepfe', label: 'Töpfe', icon: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /></> },
   { id: 'konten', label: 'Konten', icon: <><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M3 10h18M16 15h2" /></> },
 ]
@@ -25,6 +27,7 @@ const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
 const TITEL: Record<TabId, string> = {
   uebersicht: 'Übersicht',
   planen: 'Planen',
+  prognose: 'Prognose',
   toepfe: 'Töpfe',
   konten: 'Konten',
   einstellungen: 'Einstellungen',
@@ -138,8 +141,9 @@ export default function App() {
           </div>
         </header>
 
-        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={posten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} />}
+        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={posten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} zuPrognose={() => setTab('prognose')} />}
         {tab === 'planen' && <Planen posten={posten} toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
+        {tab === 'prognose' && <PrognoseScreen konten={konten} posten={posten} toepfe={toepfe} />}
         {tab === 'toepfe' && <Toepfe toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'konten' && <Konten konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'einstellungen' && <Einstellungen theme={theme} setTheme={setTheme} email={session.user.email} />}
