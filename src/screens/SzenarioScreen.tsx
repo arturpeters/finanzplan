@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { formatEuro } from '../lib/format'
 import type { Konto } from '../lib/konten'
-import { loeschePosten, monatsIndex, monatsSumme, proMonat, rhythmusLabel, speicherePosten, type Posten } from '../lib/posten'
+import { loeschePosten, monatsFluss, monatsIndex, proMonat, rhythmusLabel, speicherePosten, type Posten } from '../lib/posten'
 import { basisMonat, ladeFreiModus, rechnePrognose } from '../lib/prognose'
 import { aendereSzenario, grundplan, loescheSzenario, postenImSzenario, type Szenario } from '../lib/szenarien'
-import { toepfeRate, type Topf } from '../lib/toepfe'
+import { toepfeRateIm, type Topf } from '../lib/toepfe'
 import PostenFormular from './PostenFormular'
 
 interface Props {
@@ -29,7 +29,7 @@ export default function SzenarioScreen({ szenario, posten, konten, toepfe, offli
   const eigene = posten.filter((p) => p.szenario_id === szenario.id)
   const mitSzenario = postenImSzenario(posten, szenario)
 
-  const frei = (liste: Posten[]) => monatsSumme(liste, jetzt).frei - toepfeRate(toepfe, jetzt)
+  const frei = (liste: Posten[]) => monatsFluss(liste, jetzt).frei - toepfeRateIm(toepfe, jetzt, jetzt)
   const freiVorher = frei(grundplan(posten))
   const freiNachher = frei(mitSzenario)
   const b = basisMonat(konten, jetzt)
@@ -73,7 +73,7 @@ export default function SzenarioScreen({ szenario, posten, konten, toepfe, offli
       <section className="karte">
         <span className="zeile-titel">Auswirkung</span>
         <div className="vier-spalten">
-          <div><span className="klein">Frei/Monat jetzt</span><span className="wert">{formatEuro(freiVorher)}</span></div>
+          <div><span className="klein">Frei diesen Monat</span><span className="wert">{formatEuro(freiVorher)}</span></div>
           <div><span className="klein">mit Szenario</span><span className="wert">{formatEuro(freiNachher)} <span className="klein">{diff(freiVorher, freiNachher)}</span></span></div>
           {hatKonten && (
             <>
@@ -82,7 +82,7 @@ export default function SzenarioScreen({ szenario, posten, konten, toepfe, offli
             </>
           )}
         </div>
-        <span className="klein">„Frei/Monat“ gilt für diesen Monat. Beim Vermögen nimmt die App an, dass du gleich viel ausgibst wie bisher – Mehrkosten gehen also vom Ersparten ab.</span>
+        <span className="klein">„Frei“ gilt für diesen Monat. Beim Vermögen nimmt die App an, dass du gleich viel ausgibst wie bisher – Mehrkosten gehen also vom Ersparten ab.</span>
         <button className="knopf-primaer" onClick={zurPrognose}>In der Prognose vergleichen</button>
       </section>
 

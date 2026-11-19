@@ -62,6 +62,21 @@ export function toepfeRate(toepfe: Topf[], jetzt: number): number {
   return Math.round(s * 100) / 100
 }
 
+/**
+ * Töpfe-Rate in einem Monat `m` ab heute (`jetzt`).
+ * Annahme: Du zahlst ab jetzt jeden Monat die geplante Rate ein – dann bleibt sie bis zum Zielmonat gleich.
+ */
+export function toepfeRateIm(toepfe: Topf[], m: number, jetzt: number): number {
+  let s = 0
+  for (const t of toepfe) {
+    const info = topfInfo(t, jetzt)
+    if (info.rate === 0) continue
+    if (m === jetzt) s += info.rate
+    else if (info.status === 'laeuft' && m > jetzt && m < monatsIndex(t.zielmonat)) s += info.rate
+  }
+  return Math.round(s * 100) / 100
+}
+
 // ---------- Datenbank ----------
 
 function ausDb(z: Record<string, unknown>): Topf {

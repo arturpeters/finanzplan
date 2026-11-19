@@ -124,7 +124,8 @@
 
 .segment {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 4px;
   background: var(--track);
   border-radius: 12px;
@@ -663,7 +664,7 @@ button:disabled {
 
 .feld-reihe {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 
@@ -1094,4 +1095,118 @@ button:disabled {
 .durchgestrichen {
   text-decoration: line-through;
   color: var(--muted);
+}
+
+/* ---------- Echter Monat & Einkaufslisten ---------- */
+
+.monat-wahl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.monat-wahl-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.icon-knopf:disabled {
+  opacity: 0.35;
+}
+
+.hinweis-zeile {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--track);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.posten-zeile.statisch {
+  cursor: default;
+}
+
+.topf-knopf {
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.topf-kopf-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.zurueck {
+  align-self: flex-start;
+  padding: 0;
+}
+
+.knopf-primaer.kompakt {
+  height: 44px;
+}
+
+.formular-kompakt {
+  gap: 12px;
+}
+
+.formular-kompakt .feld input {
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 14px;
+}
+
+.listen-zeile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  border-bottom: 1px solid var(--line);
+}
+
+.listen-zeile:last-child {
+  border-bottom: 0;
+}
+
+.listen-zeile.blass {
+  opacity: 0.6;
+}
+
+.haken {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--card);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+
+/* größere Tippfläche als der sichtbare Kreis */
+.haken::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
+.haken.an {
+  background: var(--accent);
+  border-color: var(--accent);
 }

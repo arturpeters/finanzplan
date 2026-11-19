@@ -118,6 +118,58 @@ export function monatsSumme(posten: Posten[], index: number): MonatsSumme {
   return { einnahmen: r(einnahmen), fixkosten: r(fixkosten), sparen: r(sparen), frei: r(einnahmen - fixkosten - sparen) }
 }
 
+/** Präfix für Einkaufslisten-Positionen, die als einmalige Ausgabe in die Rechnung eingehen. */
+export const LISTEN_PREFIX = 'liste:'
+
+export interface MonatsFluss {
+  einnahmen: number
+  fixkosten: number // alles, was in diesem Monat wirklich abgebucht wird (auch Jahresabos, einmalige Posten)
+  sparen: number
+  einkaeufe: number // geplante Einkäufe aus Einkaufslisten
+  frei: number // ohne Töpfe – die zieht der Aufrufer ab
+}
+
+/**
+ * Echter Monat: nur was in Monat `index` tatsächlich fällig ist.
+ * Die jährliche Versicherung zählt also voll in ihrem Monat und sonst gar nicht.
+ */
+export function monatsFluss(posten: Posten[], index: number): MonatsFluss {
+  let einnahmen = 0
+  let fixkosten = 0
+  let sparen = 0
+  let einkaeufe = 0
+  for (const p of posten) {
+    if (!istFaelligIm(p, index)) continue
+    if (p.typ === 'einnahme') einnahmen += p.betrag
+    else if (p.typ === 'umbuchung') sparen += p.betrag
+    else if (p.id.startsWith(LISTEN_PREFIX)) einkaeufe += p.betrag
+    else fixkosten += p.betrag
+  }
+  const r = (x: number) => Math.round(x * 100) / 100
+  return { einnahmen: r(einnahmen), fixkosten: r(fixkosten), sparen: r(sparen), einkaeufe: r(einkaeufe), frei: r(einnahmen - fixkosten - sparen - einkaeufe) }
+}
+
+export interface GrosseZahlung {
+  index: number
+  posten: Posten[]
+  summe: number
+}
+
+/**
+ * Nächster Monat ab `ab` (inklusive), in dem nicht-monatliche Ausgaben fällig sind
+ * (Jahresabos, Quartalszahlungen, einmalige Posten, geplante Einkäufe). Sucht `monate` weit.
+ */
+export function naechsteGrosseZahlung(posten: Posten[], ab: number, monate = 12): GrosseZahlung | null {
+  const kandidaten = posten.filter((p) => p.typ === 'ausgabe' && p.rhythmus !== 'monatlich')
+  for (let i = ab; i < ab + monate; i++) {
+    const faellig = kandidaten.filter((p) => istFaelligIm(p, i))
+    if (faellig.length > 0) {
+      return { index: i, posten: faellig, summe: Math.round(faellig.reduce((s, p) => s + p.betrag, 0) * 100) / 100 }
+    }
+  }
+  return null
+}
+
 // ---------- Datenbank ----------
 
 function ausDb(z: Record<string, unknown>): Posten {

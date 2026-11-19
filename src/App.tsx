@@ -7,6 +7,8 @@ import { ladeAbgleiche, leseCache as leseAbgleichCache, type Abgleich } from './
 import AbgleichScreen from './screens/AbgleichScreen'
 import { grundplan, ladeSzenarien, leseCache as leseSzenarienCache, type Szenario } from './lib/szenarien'
 import SzenarioScreen from './screens/SzenarioScreen'
+import { ladeListen, leseListenCache, lesePositionenCache, listenAlsPosten, type Liste, type Position } from './lib/listen'
+import { monatsIndex } from './lib/posten'
 import { supabase } from './lib/supabase'
 import { ladeThemeWahl, speichereThemeWahl, systemIstDunkel, wendeThemeAn, type ThemeWahl } from './lib/theme'
 import Einstellungen from './screens/Einstellungen'
@@ -57,6 +59,9 @@ export default function App() {
   const [toepfe, setToepfe] = useState<Topf[]>(leseToepfeCache)
   const [abgleiche, setAbgleiche] = useState<Abgleich[]>(leseAbgleichCache)
   const [szenarien, setSzenarien] = useState<Szenario[]>(leseSzenarienCache)
+  const [listen, setListen] = useState<Liste[]>(leseListenCache)
+  const [positionen, setPositionen] = useState<Position[]>(lesePositionenCache)
+  const [toepfeAnsicht, setToepfeAnsicht] = useState<'toepfe' | 'listen'>('toepfe')
   const [szenarioId, setSzenarioId] = useState<string | null>(null) // im Editor geöffnet
   const [vergleichId, setVergleichIdState] = useState<string | null>(() => {
     try {
@@ -97,13 +102,15 @@ export default function App() {
   }, [])
 
   const neuLaden = useCallback(async () => {
-    const [k, p, t, a, s] = await Promise.all([ladeKonten(), ladePosten(), ladeToepfe(), ladeAbgleiche(), ladeSzenarien()])
+    const [k, p, t, a, s, l] = await Promise.all([ladeKonten(), ladePosten(), ladeToepfe(), ladeAbgleiche(), ladeSzenarien(), ladeListen()])
     setKonten(k.konten)
     setPosten(p.posten)
     setToepfe(t.toepfe)
     setAbgleiche(a.abgleiche)
     setSzenarien(s.szenarien)
-    setOffline(k.offline || p.offline || t.offline || a.offline || s.offline)
+    setListen(l.listen)
+    setPositionen(l.positionen)
+    setOffline(k.offline || p.offline || t.offline || a.offline || s.offline || l.offline)
   }, [])
 
   // Daten laden, sobald eingeloggt – und immer, wenn die App wieder in den Vordergrund kommt.
@@ -125,6 +132,9 @@ export default function App() {
 
   // Grundplan: alles außer Szenario-Posten. Nur die Prognose und der Szenario-Editor sehen alle.
   const basisPosten = grundplan(posten)
+  // Eingeplante Einkäufe gehen als einmalige Ausgaben in Plan und Prognose
+  const listenPosten = listenAlsPosten(listen, positionen, monatsIndex(new Date()))
+  const planPosten = [...basisPosten, ...listenPosten]
   const offenesSzenario = szenarien.find((s) => s.id === szenarioId) ?? null
   const istDunkel = theme === 'dunkel' || (theme === 'system' && systemIstDunkel())
   const monat = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
@@ -171,12 +181,12 @@ export default function App() {
           </div>
         </header>
 
-        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={basisPosten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} zuPrognose={() => setTab('prognose')} zuAbgleich={() => setTab('abgleich')} abgleiche={abgleiche} />}
-        {tab === 'planen' && <Planen posten={basisPosten} toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
+        {tab === 'uebersicht' && <Uebersicht konten={konten} posten={planPosten} toepfe={toepfe} zuKonten={() => setTab('konten')} zuPlanen={() => setTab('planen')} zuPrognose={() => setTab('prognose')} zuAbgleich={() => setTab('abgleich')} abgleiche={abgleiche} />}
+        {tab === 'planen' && <Planen posten={basisPosten} listenPosten={listenPosten} zuListen={() => { setToepfeAnsicht('listen'); setTab('toepfe') }} toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'prognose' && (
           <PrognoseScreen
             konten={konten}
-            posten={posten}
+            posten={[...posten, ...listenPosten]}
             toepfe={toepfe}
             szenarien={szenarien}
             vergleichId={vergleichId}
@@ -189,16 +199,16 @@ export default function App() {
             offline={offline}
           />
         )}
-        {tab === 'toepfe' && <Toepfe toepfe={toepfe} konten={konten} offline={offline} neuLaden={neuLaden} />}
+        {tab === 'toepfe' && <Toepfe toepfe={toepfe} listen={listen} positionen={positionen} ansicht={toepfeAnsicht} setAnsicht={setToepfeAnsicht} konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'konten' && <Konten konten={konten} offline={offline} neuLaden={neuLaden} zuAbgleich={() => setTab('abgleich')} />}
         {tab === 'abgleich' && (
-          <AbgleichScreen konten={konten} posten={basisPosten} toepfe={toepfe} abgleiche={abgleiche} offline={offline} neuLaden={neuLaden} fertig={() => setTab('uebersicht')} />
+          <AbgleichScreen konten={konten} posten={planPosten} toepfe={toepfe} abgleiche={abgleiche} offline={offline} neuLaden={neuLaden} fertig={() => setTab('uebersicht')} />
         )}
         {tab === 'szenario' && offenesSzenario && (
           <SzenarioScreen
             key={offenesSzenario.id}
             szenario={offenesSzenario}
-            posten={posten}
+            posten={[...posten, ...listenPosten]}
             konten={konten}
             toepfe={toepfe}
             offline={offline}

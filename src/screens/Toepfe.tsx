@@ -3,10 +3,16 @@ import { formatEuro } from '../lib/format'
 import type { Konto } from '../lib/konten'
 import { indexZuDatum, monatsIndex } from '../lib/posten'
 import { aendereTopf, loescheTopf, speichereTopf, toepfeRate, topfInfo, type Topf } from '../lib/toepfe'
+import type { Liste, Position } from '../lib/listen'
+import Einkaufslisten from './Einkaufslisten'
 import TopfFormular from './TopfFormular'
 
 interface Props {
   toepfe: Topf[]
+  listen: Liste[]
+  positionen: Position[]
+  ansicht: 'toepfe' | 'listen'
+  setAnsicht: (a: 'toepfe' | 'listen') => void
   konten: Konto[]
   offline: boolean
   neuLaden: () => Promise<void>
@@ -14,7 +20,7 @@ interface Props {
 
 const monatJahr = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
 
-export default function Toepfe({ toepfe, konten, offline, neuLaden }: Props) {
+export default function Toepfe({ toepfe, listen, positionen, ansicht, setAnsicht, konten, offline, neuLaden }: Props) {
   const [bearbeiten, setBearbeiten] = useState<Topf | 'neu' | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const jetzt = monatsIndex(new Date())
@@ -97,8 +103,25 @@ export default function Toepfe({ toepfe, konten, offline, neuLaden }: Props) {
     )
   }
 
+  const umschalter = (
+    <div className="segment" role="radiogroup" aria-label="Ansicht">
+      <button role="radio" aria-checked={ansicht === 'toepfe'} className={ansicht === 'toepfe' ? 'aktiv' : ''} onClick={() => setAnsicht('toepfe')}>Töpfe</button>
+      <button role="radio" aria-checked={ansicht === 'listen'} className={ansicht === 'listen' ? 'aktiv' : ''} onClick={() => setAnsicht('listen')}>Einkaufslisten</button>
+    </div>
+  )
+
+  if (ansicht === 'listen') {
+    return (
+      <>
+        {umschalter}
+        <Einkaufslisten listen={listen} positionen={positionen} offline={offline} neuLaden={neuLaden} />
+      </>
+    )
+  }
+
   return (
     <>
+      {umschalter}
       <section className="karte">
         <span className="klein">Monatlich zurücklegen für alle Töpfe</span>
         <span className="gross">{formatEuro(summeRate)}</span>

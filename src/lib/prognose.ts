@@ -1,5 +1,5 @@
 import type { Konto } from './konten'
-import { istFaelligIm, monatsSumme, type Posten } from './posten'
+import { istFaelligIm, monatsFluss, type Posten } from './posten'
 import { topfInfo, type Topf } from './toepfe'
 
 /**
@@ -10,7 +10,8 @@ import { topfInfo, type Topf } from './toepfe'
  * - Posten wirken in dem Monat, in dem sie wirklich fällig sind (jährliche Kfz-Versicherung im März voll).
  * - Umbuchungen verschieben Geld zwischen Konten, das Vermögen bleibt gleich.
  * - Töpfe: Die Monatsrate wandert auf das Topf-Konto, im Zielmonat wird der Zielbetrag ausgegeben.
- * - "Frei verfügbar" wird je nach Einstellung ausgegeben (Standard), halb gespart oder ganz gespart.
+ * - "Frei verfügbar" (echter Monat, nach allen fälligen Zahlungen) wird je nach Einstellung
+ *   ausgegeben (Standard), halb gespart oder ganz gespart.
  * - Depots wachsen mit ihrer angenommenen Jahresrendite (monatlich verzinst).
  */
 
@@ -171,8 +172,9 @@ export function rechnePrognose(
       }
     }
 
-    // 3. Freies Geld: der ausgegebene Teil verlässt das Standardkonto
-    const frei = monatsSumme(freiPosten, m).frei - toepfeRateMonat
+    // 3. Freies Geld des echten Monats: der ausgegebene Teil verlässt das Standardkonto.
+    //    Im Monat der Jahreszahlung ist entsprechend weniger frei.
+    const frei = monatsFluss(freiPosten, m).frei - toepfeRateMonat
     const ausgegebenFrei = r2(Math.max(0, frei) * anteilAusgegeben)
     buche(standardKonto, -ausgegebenFrei, m)
 

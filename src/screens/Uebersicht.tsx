@@ -1,13 +1,13 @@
 import { formatEuro } from '../lib/format'
 import { summeVermoegen, type Konto } from '../lib/konten'
-import { indexZuDatum, monatsIndex, monatsSumme, type Posten } from '../lib/posten'
+import { indexZuDatum, monatsFluss, monatsIndex, naechsteGrosseZahlung, type Posten } from '../lib/posten'
 import { abgleichFaellig, runden, type Abgleich } from '../lib/abgleich'
 import { basisMonat, ladeFreiModus, rechnePrognose } from '../lib/prognose'
-import { toepfeRate, type Topf } from '../lib/toepfe'
+import { toepfeRateIm, type Topf } from '../lib/toepfe'
 
 interface Props {
   konten: Konto[]
-  posten: Posten[]
+  posten: Posten[] // Grundplan + eingeplante Einkäufe
   toepfe: Topf[]
   zuKonten: () => void
   zuPlanen: () => void
@@ -19,8 +19,12 @@ interface Props {
 export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen, zuPrognose, zuAbgleich, abgleiche }: Props) {
   const aktiveKonten = konten.filter((k) => k.aktiv)
   const jetzt = monatsIndex(new Date())
-  const summe = monatsSumme(posten, jetzt)
-  const toepfeMonat = toepfeRate(toepfe, jetzt)
+  // Echter Monat: Jahreszahlungen zählen voll in ihrem Monat
+  const summe = monatsFluss(posten, jetzt)
+  const toepfeMonat = toepfeRateIm(toepfe, jetzt, jetzt)
+  const grosse = naechsteGrosseZahlung(posten, jetzt + 1, 12)
+  const monatName = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(new Date())
+  const monatJahr = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
   const frei = Math.round((summe.frei - toepfeMonat) * 100) / 100
   const hatPosten = posten.some((p) => p.aktiv)
   const basis = basisMonat(konten, jetzt)
@@ -39,7 +43,7 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
   return (
     <>
       <section className="karte">
-        <span className="klein">Frei verfügbar pro Monat</span>
+        <span className="klein">Frei verfügbar im {monatName}</span>
         {hatPosten ? (
           <>
             <span className={`riesig ${frei < 0 ? 'minus' : ''}`}>{formatEuro(frei)}</span>
@@ -48,6 +52,7 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
                 <span style={{ flex: anteil(summe.fixkosten), background: 'var(--muted)' }} />
                 <span style={{ flex: anteil(summe.sparen), background: 'var(--punkt-2)' }} />
                 <span style={{ flex: anteil(toepfeMonat), background: 'var(--punkt-3)' }} />
+                <span style={{ flex: anteil(summe.einkaeufe), background: 'var(--warn)' }} />
                 <span style={{ flex: anteil(frei), background: 'var(--accent)' }} />
               </div>
             )}
@@ -56,8 +61,18 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
               <div><span className="klein"><i className="legende" style={{ background: 'var(--muted)' }} />Fixkosten</span><span className="wert">−{formatEuro(summe.fixkosten)}</span></div>
               <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-2)' }} />Sparen</span><span className="wert">−{formatEuro(summe.sparen)}</span></div>
               <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-3)' }} />Töpfe</span><span className="wert">−{formatEuro(toepfeMonat)}</span></div>
+              {summe.einkaeufe > 0 && (
+                <div><span className="klein"><i className="legende" style={{ background: 'var(--warn)' }} />Einkäufe</span><span className="wert">−{formatEuro(summe.einkaeufe)}</span></div>
+              )}
             </div>
-            {frei < 0 && <p className="meldung meldung-fehler">Fixkosten, Sparraten und Töpfe sind zusammen höher als deine Einnahmen.</p>}
+            {frei < 0 && <p className="meldung meldung-fehler">Diesen Monat geht mehr raus, als reinkommt. Prüf, ob ein Kauf warten kann oder ob die Rücklage reicht.</p>}
+            {grosse && (
+              <p className="hinweis-zeile">
+                <strong>Nächste Sonderzahlung: {monatJahr.format(new Date(indexZuDatum(grosse.index)))}</strong>
+                {' – '}
+                {grosse.posten.map((p) => `${p.name} ${formatEuro(p.betrag)}`).join(', ')}
+              </p>
+            )}
           </>
         ) : (
           <>
