@@ -16,6 +16,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false, // Registrierung passiert in src/main.tsx
+      // Neue Version sofort aktivieren statt zu warten, bis alle Fenster geschlossen sind
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+      },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: APP_NAME,
