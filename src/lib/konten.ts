@@ -99,6 +99,19 @@ export async function loescheKonto(id: string): Promise<string | null> {
   return error ? error.message : null
 }
 
+/** Konto, über das Posten ohne eigenes Konto laufen: erstes aktives Girokonto, sonst erstes aktives Konto. */
+export function standardKontoId(konten: Konto[]): string | null {
+  const aktive = konten.filter((k) => k.aktiv)
+  return aktive.find((k) => k.art === 'giro')?.id ?? aktive[0]?.id ?? null
+}
+
+/** Prüft, ob eine Konto-ID (oder "kein Konto") effektiv das Standardkonto ist – genau wie die Prognose bucht. */
+export function standardPruefer(konten: Konto[]): (id: string | null) => boolean {
+  const aktivIds = new Set(konten.filter((k) => k.aktiv).map((k) => k.id))
+  const std = standardKontoId(konten)
+  return (id) => !id || !aktivIds.has(id) || id === std
+}
+
 /** Vermögen = Summe aller aktiven Konten (ausgeblendete zählen mit, deaktivierte nicht). */
 export function summeVermoegen(konten: Konto[]): number {
   return konten.filter((k) => k.aktiv).reduce((s, k) => s + k.startsaldo, 0)

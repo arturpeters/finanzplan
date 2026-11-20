@@ -5,7 +5,10 @@ export interface Liste {
   id: string
   name: string
   erledigt: boolean
+  budget: number | null // optionales Budget für die ganze Liste
 }
+
+export type Prioritaet = 'muss' | 'wunsch'
 
 export interface Position {
   id: string
@@ -15,7 +18,9 @@ export interface Position {
   geplant_monat: string | null // YYYY-MM-01
   gekauft: boolean
   gekauft_preis: number | null
+  gekauft_monat: string | null // YYYY-MM-01, wird beim Abhaken gesetzt
   link: string | null // nur https://
+  prioritaet: Prioritaet
 }
 
 const KEY_L = 'finanzplan.listen'
@@ -46,13 +51,16 @@ export interface ListenSumme {
   ohneMonat: number // offene Positionen ohne geplanten Monat (nicht im Plan)
 }
 
+/** Was eine Position kostet bzw. gekostet hat: echter Preis, sonst geplanter. */
+export const kosten = (p: Position) => (p.gekauft ? p.gekauft_preis ?? p.preis : p.preis)
+
 /** Gesamt = Ausgegeben (echter Preis, sonst geplanter) + Offen. */
 export function listenSumme(positionen: Position[]): ListenSumme {
   let ausgegeben = 0
   let offen = 0
   let ohneMonat = 0
   for (const p of positionen) {
-    if (p.gekauft) ausgegeben += p.gekauft_preis ?? p.preis
+    if (p.gekauft) ausgegeben += kosten(p)
     else {
       offen += p.preis
       if (!p.geplant_monat) ohneMonat += p.preis
@@ -61,34 +69,86 @@ export function listenSumme(positionen: Position[]): ListenSumme {
   return { gesamt: r2(ausgegeben + offen), ausgegeben: r2(ausgegeben), offen: r2(offen), ohneMonat: r2(ohneMonat) }
 }
 
+export interface BudgetStand extends ListenSumme {
+  budget: number | null
+  frei: number | null // Budget − Gesamt (eingeplant inkl. gekauft); negativ = drüber
+  ueber: number // wie viel über Budget (0 wenn es passt)
+  ersparnis: number // Summe (geplanter − echter Preis) bei gekauften Positionen mit echtem Preis; negativ = teurer
+  streichen: Position[] // offene Wunsch-Positionen, die das Budget wieder passend machen würden
+  streichenReicht: boolean // reicht das Streichen aller vorgeschlagenen Wünsche?
+}
+
 /**
- * Offene, eingeplante Positionen als einmalige Ausgaben für Plan und Prognose.
- * Liegt der geplante Monat schon in der Vergangenheit, zählt die Position im laufenden Monat.
- * Gekaufte Positionen zählen nicht mehr – das Geld ist schon weg und steckt im echten Kontostand.
+ * Budget-Rechner einer Liste.
+ * Vorschlag zum Streichen: die teuersten offenen Wünsche zuerst, bis die Überschreitung gedeckt ist.
  */
-export function listenAlsPosten(listen: Liste[], positionen: Position[], jetzt: number): Posten[] {
-  const aktiveListen = new Map(listen.filter((l) => !l.erledigt).map((l) => [l.id, l]))
-  return positionen
-    .filter((p) => !p.gekauft && p.geplant_monat && aktiveListen.has(p.liste_id))
-    .map((p) => {
-      const monat = indexZuDatum(Math.max(monatsIndex(p.geplant_monat!), jetzt))
-      return {
-        id: LISTEN_PREFIX + p.id,
-        name: p.name,
-        typ: 'ausgabe',
-        betrag: p.preis,
-        rhythmus: 'einmalig',
-        faellig_monat: null,
-        gueltig_ab: monat,
-        gueltig_bis: monat,
-        von_konto_id: null,
-        auf_konto_id: null,
-        kategorie: `Einkaufsliste: ${aktiveListen.get(p.liste_id)!.name}`,
-        notiz: null,
-        aktiv: true,
-        szenario_id: null,
-      } satisfies Posten
+export function budgetStand(liste: Liste, positionen: Position[]): BudgetStand {
+  const pos = positionen.filter((p) => p.liste_id === liste.id)
+  const summe = listenSumme(pos)
+  const ersparnis = r2(pos.filter((p) => p.gekauft && p.gekauft_preis !== null).reduce((s, p) => s + (p.preis - p.gekauft_preis!), 0))
+  if (liste.budget == null) return { ...summe, budget: null, frei: null, ueber: 0, ersparnis, streichen: [], streichenReicht: true }
+  const frei = r2(liste.budget - summe.gesamt)
+  const ueber = Math.max(0, -frei)
+  const streichen: Position[] = []
+  let gedeckt = 0
+  if (ueber > 0) {
+    const wuensche = pos.filter((p) => !p.gekauft && p.prioritaet === 'wunsch').sort((a, b) => b.preis - a.preis)
+    for (const w of wuensche) {
+      if (gedeckt >= ueber) break
+      streichen.push(w)
+      gedeckt = r2(gedeckt + w.preis)
+    }
+  }
+  return { ...summe, budget: liste.budget ?? null, frei, ueber, ersparnis, streichen, streichenReicht: gedeckt >= ueber }
+}
+
+/**
+ * Einkaufslisten als einmalige Ausgaben für Plan, Prognose und Abgleich.
+ * - Offene Positionen mit Monat: in ihrem geplanten Monat; liegt der schon zurück, im laufenden Monat.
+ *   Nur aus nicht erledigten Listen.
+ * - Gekaufte Positionen: im Kaufmonat (sonst im geplanten Monat), mit echtem Preis. So bleibt ein Kauf
+ *   in "Frei im Monat" und im Plan-Wert des Abgleichs enthalten. In Monaten, deren Kontostand schon
+ *   bekannt ist, ignoriert die Prognose ihn automatisch (er steckt dann im echten Kontostand).
+ */
+export function listenAlsPosten(
+  listen: Liste[],
+  positionen: Position[],
+  jetzt: number,
+  auswahl: { offen?: boolean; gekauft?: boolean } = {},
+): Posten[] {
+  const { offen = true, gekauft = true } = auswahl
+  const listenNach = new Map(listen.map((l) => [l.id, l]))
+  const ergebnis: Posten[] = []
+  for (const p of positionen) {
+    const liste = listenNach.get(p.liste_id)
+    if (!liste) continue
+    let monat: string | null = null
+    if (p.gekauft) {
+      if (!gekauft) continue
+      monat = p.gekauft_monat ?? p.geplant_monat
+    } else {
+      if (!offen || liste.erledigt || !p.geplant_monat) continue
+      monat = indexZuDatum(Math.max(monatsIndex(p.geplant_monat), jetzt))
+    }
+    if (!monat) continue
+    ergebnis.push({
+      id: LISTEN_PREFIX + p.id,
+      name: p.name,
+      typ: 'ausgabe',
+      betrag: kosten(p),
+      rhythmus: 'einmalig',
+      faellig_monat: null,
+      gueltig_ab: monat,
+      gueltig_bis: monat,
+      von_konto_id: null,
+      auf_konto_id: null,
+      kategorie: `Einkaufsliste: ${liste.name}`,
+      notiz: p.gekauft ? 'gekauft' : null,
+      aktiv: true,
+      szenario_id: null,
     })
+  }
+  return ergebnis
 }
 
 // ---------- Datenbank ----------
@@ -118,14 +178,31 @@ export function loescheCache() {
   }
 }
 
+const zahlOderNull = (x: unknown) => (x == null || Number.isNaN(Number(x)) ? null : Number(x))
+// Auch Daten aus älteren Versionen (Offline-Kopie ohne Budget/Priorität/Kaufmonat) sauber machen
+function normListe(z: Record<string, unknown>): Liste {
+  return { ...(z as unknown as Liste), budget: zahlOderNull(z.budget) }
+}
+function normPosition(z: Record<string, unknown>): Position {
+  return {
+    ...(z as unknown as Position),
+    preis: Number(z.preis) || 0,
+    gekauft_preis: zahlOderNull(z.gekauft_preis),
+    gekauft_monat: (z.gekauft_monat as string | null | undefined) ?? null,
+    link: (z.link as string | null | undefined) ?? null,
+    prioritaet: z.prioritaet === 'wunsch' ? 'wunsch' : 'muss',
+  }
+}
+
 export async function ladeListen(): Promise<{ listen: Liste[]; positionen: Position[]; offline: boolean }> {
   const [l, p] = await Promise.all([
-    supabase.from('listen').select('id,name,erledigt').order('erstellt_am'),
-    supabase.from('listen_positionen').select('id,liste_id,name,preis,geplant_monat,gekauft,gekauft_preis,link').order('geplant_monat', { nullsFirst: false }).order('erstellt_am'),
+    supabase.from('listen').select('id,name,erledigt,budget').order('erstellt_am'),
+    supabase.from('listen_positionen').select('id,liste_id,name,preis,geplant_monat,gekauft,gekauft_preis,gekauft_monat,link,prioritaet').order('geplant_monat', { nullsFirst: false }).order('erstellt_am'),
   ])
-  if (l.error || p.error || !l.data || !p.data) return { listen: leseListenCache(), positionen: lesePositionenCache(), offline: true }
-  const positionen = p.data.map((z) => ({ ...z, preis: Number(z.preis), gekauft_preis: z.gekauft_preis === null ? null : Number(z.gekauft_preis) })) as Position[]
-  return { listen: cache(KEY_L, l.data as Liste[]), positionen: cache(KEY_P, positionen), offline: false }
+  if (l.error || p.error || !l.data || !p.data) return { listen: leseListenCache().map((z) => normListe(z as never)), positionen: lesePositionenCache().map((z) => normPosition(z as never)), offline: true }
+  const positionen = p.data.map(normPosition)
+  const listenDaten = l.data.map(normListe)
+  return { listen: cache(KEY_L, listenDaten), positionen: cache(KEY_P, positionen), offline: false }
 }
 
 export async function legeListeAn(name: string): Promise<{ id: string | null; fehler: string | null }> {

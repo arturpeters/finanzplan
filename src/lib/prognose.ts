@@ -128,11 +128,17 @@ export function rechnePrognose(
     if (k.art === 'depot' && k.rendite_pa) monatsZins[k.id] = Math.pow(1 + k.rendite_pa / 100, 1 / 12) - 1
   }
 
-  // Töpfe werden mitsimuliert: angespart wächst mit jeder Rate
+  // Töpfe werden mitsimuliert: angespart wächst mit jeder Rate.
+  // Wurde in einem Monat schon über "+ eingezahlt" eingezahlt, ist das genau die Rate dieses Monats –
+  // sie steckt schon in "angespart" und wird nicht noch einmal angespart.
   const simToepfe = toepfe
     .filter((t) => t.aktiv && !t.erledigt)
-    .map((t) => ({ ...t, letzte_einzahlung: null, letzte_einzahlung_monat: null }))
+    .map((t) => ({
+      ...t,
+      bezahltIm: t.letzte_einzahlung_monat && t.letzte_einzahlung !== null ? Number(t.letzte_einzahlung_monat.slice(0, 4)) * 12 + Number(t.letzte_einzahlung_monat.slice(5, 7)) - 1 : null,
+    }))
   const freiPosten = freiReferenz ?? posten
+  const istStandard = (id: string | null) => zuKonto(id) === standardKonto
 
   const summe = () => r2(Object.values(stand).reduce((s, x) => s + x, 0))
   const start = summe()
@@ -163,10 +169,11 @@ export function rechnePrognose(
     for (const t of simToepfe) {
       const ziel = Math.max(Number(t.zielmonat.slice(0, 4)) * 12 + Number(t.zielmonat.slice(5, 7)) - 1, jetzt + 1)
       if (m < ziel) {
-        const rate = topfInfo(t, m).rate
+        const schonBezahlt = t.bezahltIm === m
+        const rate = schonBezahlt ? (t.letzte_einzahlung ?? 0) : topfInfo({ ...t, letzte_einzahlung: null, letzte_einzahlung_monat: null }, m).rate
         if (rate > 0) {
           toepfeRateMonat += rate
-          t.angespart = r2(t.angespart + rate)
+          if (!schonBezahlt) t.angespart = r2(t.angespart + rate)
           buche(standardKonto, -rate, m)
           buche(zuKonto(t.konto_id), rate, m)
         }
@@ -178,7 +185,7 @@ export function rechnePrognose(
 
     // 3. Freies Geld des echten Monats: der ausgegebene Teil verlässt das Standardkonto.
     //    Im Monat der Jahreszahlung ist entsprechend weniger frei.
-    const frei = monatsFluss(freiPosten, m).frei - toepfeRateMonat
+    const frei = monatsFluss(freiPosten, m, istStandard).frei - toepfeRateMonat
     const ausgegebenFrei = r2(Math.max(0, frei) * anteilAusgegeben)
     buche(standardKonto, -ausgegebenFrei, m)
 

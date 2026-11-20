@@ -155,8 +155,11 @@ export default function App() {
   // Grundplan: alles außer Szenario-Posten. Nur die Prognose und der Szenario-Editor sehen alle.
   const basisPosten = grundplan(posten)
   // Eingeplante Einkäufe gehen als einmalige Ausgaben in Plan und Prognose
+  // Einkaufslisten: offene (eingeplante) und gekaufte Positionen als einmalige Ausgaben
   const listenPosten = listenAlsPosten(listen, positionen, monatsIndex(new Date()))
   const planPosten = [...basisPosten, ...listenPosten]
+  // Für den Plan-Wert beim Abgleich zählen nur wirklich gekaufte Positionen (offene sind ja noch nicht passiert)
+  const abgleichPosten = [...basisPosten, ...listenAlsPosten(listen, positionen, monatsIndex(new Date()), { offen: false })]
   const offenesSzenario = szenarien.find((s) => s.id === szenarioId) ?? null
   const istDunkel = theme === 'dunkel' || (theme === 'system' && systemIstDunkel())
   const monat = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
@@ -231,7 +234,7 @@ export default function App() {
         {tab === 'toepfe' && <Toepfe toepfe={toepfe} listen={listen} positionen={positionen} ansicht={toepfeAnsicht} setAnsicht={setToepfeAnsicht} konten={konten} offline={offline} neuLaden={neuLaden} />}
         {tab === 'konten' && <Konten konten={konten} offline={offline} neuLaden={neuLaden} zuAbgleich={() => setTab('abgleich')} />}
         {tab === 'abgleich' && (
-          <AbgleichScreen konten={konten} posten={planPosten} toepfe={toepfe} abgleiche={abgleiche} offline={offline} neuLaden={neuLaden} fertig={() => setTab('uebersicht')} />
+          <AbgleichScreen konten={konten} posten={abgleichPosten} toepfe={toepfe} abgleiche={abgleiche} offline={offline} neuLaden={neuLaden} fertig={() => setTab('uebersicht')} />
         )}
         {tab === 'szenario' && offenesSzenario && (
           <SzenarioScreen

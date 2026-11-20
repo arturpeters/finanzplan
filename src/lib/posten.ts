@@ -125,16 +125,20 @@ export const LISTEN_PREFIX = 'liste:'
 export interface MonatsFluss {
   einnahmen: number
   fixkosten: number // alles, was in diesem Monat wirklich abgebucht wird (auch Jahresabos, einmalige Posten)
-  sparen: number
-  einkaeufe: number // geplante Einkäufe aus Einkaufslisten
+  sparen: number // netto: Umbuchungen vom Girokonto weg minus Umbuchungen aufs Girokonto (negativ = Entnahme)
+  einkaeufe: number // Einkäufe aus Einkaufslisten (geplant oder in diesem Monat gekauft)
   frei: number // ohne Töpfe – die zieht der Aufrufer ab
 }
 
 /**
  * Echter Monat: nur was in Monat `index` tatsächlich fällig ist.
  * Die jährliche Versicherung zählt also voll in ihrem Monat und sonst gar nicht.
+ *
+ * Umbuchungen: Mit `istStandard` (siehe standardPruefer) zählt nur Geld, das vom Girokonto weggeht,
+ * als Sparen. Geld aufs Girokonto (z. B. vom Tagesgeld) erhöht das freie Geld, Umbuchungen zwischen
+ * zwei Sparkonten ändern es nicht. Ohne `istStandard` zählt jede Umbuchung als Sparen.
  */
-export function monatsFluss(posten: Posten[], index: number): MonatsFluss {
+export function monatsFluss(posten: Posten[], index: number, istStandard?: (id: string | null) => boolean): MonatsFluss {
   let einnahmen = 0
   let fixkosten = 0
   let sparen = 0
@@ -142,7 +146,15 @@ export function monatsFluss(posten: Posten[], index: number): MonatsFluss {
   for (const p of posten) {
     if (!istFaelligIm(p, index)) continue
     if (p.typ === 'einnahme') einnahmen += p.betrag
-    else if (p.typ === 'umbuchung') sparen += p.betrag
+    else if (p.typ === 'umbuchung') {
+      if (!istStandard) sparen += p.betrag
+      else {
+        const vonGiro = istStandard(p.von_konto_id)
+        const aufGiro = istStandard(p.auf_konto_id)
+        if (vonGiro && !aufGiro) sparen += p.betrag
+        else if (!vonGiro && aufGiro) sparen -= p.betrag
+      }
+    }
     else if (p.id.startsWith(LISTEN_PREFIX)) einkaeufe += p.betrag
     else fixkosten += p.betrag
   }

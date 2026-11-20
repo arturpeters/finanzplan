@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatEuro } from '../lib/format'
+import { formatEuro, lokalesDatum } from '../lib/format'
 import type { Konto } from '../lib/konten'
 import { indexZuDatum, monatsIndex } from '../lib/posten'
 import { aendereTopf, loescheTopf, speichereTopf, toepfeRate, topfInfo, type Topf } from '../lib/toepfe'
@@ -37,7 +37,7 @@ export default function Toepfe({ toepfe, listen, positionen, ansicht, setAnsicht
 
   function Karte({ t }: { t: Topf }) {
     const info = topfInfo(t, jetzt)
-    const ziel = monatJahr.format(new Date(t.zielmonat))
+    const ziel = monatJahr.format(lokalesDatum(t.zielmonat))
     const konto = konten.find((k) => k.id === t.konto_id)
     let zeile: string
     if (info.status === 'laeuft')

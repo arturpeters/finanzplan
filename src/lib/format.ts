@@ -1,6 +1,17 @@
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 const euroGanz = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 
+/** Heutiges Datum als YYYY-MM-DD in Ortszeit (nicht UTC – sonst ist es kurz nach Mitternacht noch "gestern"). */
+export function heuteLokal(jetzt = new Date()): string {
+  return `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-${String(jetzt.getDate()).padStart(2, '0')}`
+}
+
+/** "YYYY-MM-DD" als Datum in Ortszeit (new Date("2026-12-05") wäre UTC und kann je nach Zeitzone einen Tag verrutschen). */
+export function lokalesDatum(s: string): Date {
+  const [j, m, t] = s.split('-').map(Number)
+  return new Date(j, (m || 1) - 1, t || 1)
+}
+
 // "Beträge ausblenden": alle angezeigten Beträge werden zu •••, Eingabefelder bleiben unberührt
 let verborgen = false
 export function setzeBetraegeVerborgen(v: boolean) {
@@ -39,4 +50,9 @@ export function parseBetrag(eingabe: string): number | null {
 /** Zahl für ein Eingabefeld: 1234.5 → "1234,50" */
 export function betragFuerEingabe(betrag: number): string {
   return betrag.toFixed(2).replace('.', ',')
+}
+
+/** Abzug mit Minuszeichen – aber 0 ohne "−0,00 €". */
+export function abzug(betrag: number): string {
+  return betrag > 0.004 ? `−${formatEuro(betrag)}` : formatEuro(0)
 }

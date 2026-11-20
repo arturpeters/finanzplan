@@ -17,15 +17,16 @@ const CACHE_KEY = 'finanzplan.abgleiche'
 // ---------- Rechnung ----------
 
 /**
- * Was der Plan zum Anfang des laufenden Monats (= Ende des Vormonats) auf jedem aktiven Konto erwartet.
- * Ausgangspunkt ist der letzte bekannte Stand (siehe basisMonat). Liegt der nicht vor dem Vormonat,
+ * Was der Plan zum Ende des Monats `ziel` auf jedem aktiven Konto erwartet.
+ * - Abgleich "Zahlungen dieses Monats noch nicht durch": ziel = Vormonat (Stand zum Monatsanfang)
+ * - Abgleich "Zahlungen schon durch": ziel = laufender Monat (Stand zum Monatsende)
+ * Ausgangspunkt ist der letzte bekannte Stand (siehe basisMonat). Liegt der nicht vor `ziel`,
  * erwartet der Plan keine Veränderung.
  */
-export function erwarteteStaende(konten: Konto[], posten: Posten[], toepfe: Topf[], jetzt: number, freiModus: FreiModus): Record<string, number> {
+export function erwarteteStaende(konten: Konto[], posten: Posten[], toepfe: Topf[], ziel: number, freiModus: FreiModus): Record<string, number> {
   const aktive = konten.filter((k) => k.aktiv)
   if (aktive.length === 0) return {}
-  const basis = basisMonat(konten, jetzt)
-  const ziel = jetzt - 1
+  const basis = basisMonat(konten, ziel)
   const erwartet: Record<string, number> = {}
   if (ziel <= basis) {
     for (const k of aktive) erwartet[k.id] = k.startsaldo

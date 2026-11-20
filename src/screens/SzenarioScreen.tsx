@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatEuro } from '../lib/format'
-import type { Konto } from '../lib/konten'
+import { standardPruefer, type Konto } from '../lib/konten'
 import { loeschePosten, monatsFluss, monatsIndex, proMonat, rhythmusLabel, speicherePosten, type Posten } from '../lib/posten'
 import { basisMonat, ladeFreiModus, rechnePrognose } from '../lib/prognose'
 import { aendereSzenario, grundplan, loescheSzenario, postenImSzenario, type Szenario } from '../lib/szenarien'
@@ -29,7 +29,7 @@ export default function SzenarioScreen({ szenario, posten, konten, toepfe, offli
   const eigene = posten.filter((p) => p.szenario_id === szenario.id)
   const mitSzenario = postenImSzenario(posten, szenario)
 
-  const frei = (liste: Posten[]) => monatsFluss(liste, jetzt).frei - toepfeRateIm(toepfe, jetzt, jetzt)
+  const frei = (liste: Posten[]) => monatsFluss(liste, jetzt, standardPruefer(konten)).frei - toepfeRateIm(toepfe, jetzt, jetzt)
   const freiVorher = frei(grundplan(posten))
   const freiNachher = frei(mitSzenario)
   const b = basisMonat(konten, jetzt)

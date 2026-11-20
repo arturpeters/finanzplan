@@ -1,11 +1,11 @@
-import { formatEuro } from '../lib/format'
-import { summeVermoegen, type Konto } from '../lib/konten'
+import { formatEuro, abzug, lokalesDatum } from '../lib/format'
+import { standardPruefer, summeVermoegen, type Konto } from '../lib/konten'
 import { baldKuendbar, indexZuDatum, monatsFluss, monatsIndex, naechsteGrosseZahlung, type Posten } from '../lib/posten'
 import { notgroschen, type Einstellungen } from '../lib/einstellungen'
 import { abgleichFaellig, runden, type Abgleich } from '../lib/abgleich'
 import { basisMonat, ladeFreiModus, rechnePrognose } from '../lib/prognose'
 import { toepfeRateIm, type Topf } from '../lib/toepfe'
-import { listenSumme, type Liste, type Position } from '../lib/listen'
+import { budgetStand, listenSumme, type Liste, type Position } from '../lib/listen'
 
 interface Props {
   konten: Konto[]
@@ -27,7 +27,7 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
   const aktiveKonten = konten.filter((k) => k.aktiv)
   const jetzt = monatsIndex(new Date())
   // Echter Monat: Jahreszahlungen zählen voll in ihrem Monat
-  const summe = monatsFluss(posten, jetzt)
+  const summe = monatsFluss(posten, jetzt, standardPruefer(konten))
   const toepfeMonat = toepfeRateIm(toepfe, jetzt, jetzt)
   const grosse = naechsteGrosseZahlung(posten, jetzt + 1, 12)
   const monatName = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(new Date())
@@ -46,7 +46,7 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
   const sparkline = werte.map((v, i) => `${((i / Math.max(1, werte.length - 1)) * 300).toFixed(1)},${(56 - ((v - lo) / spanne) * 48).toFixed(1)}`).join(' ')
   const planMonat = new Intl.DateTimeFormat('de-DE', { month: 'short', year: 'numeric' }).format(new Date(indexZuDatum(jetzt + 12)))
   // Sparquote: Anteil der Einnahmen, der in Sparen und Töpfe fließt
-  const sparquote = summe.einnahmen > 0 ? Math.round(((summe.sparen + toepfeMonat) / summe.einnahmen) * 100) : null
+  const sparquote = summe.einnahmen > 0 ? Math.max(0, Math.round(((summe.sparen + toepfeMonat) / summe.einnahmen) * 100)) : null
   // Einkaufslisten: offene Positionen aller nicht erledigten Listen
   const offeneListenIds = new Set(listen.filter((l) => !l.erledigt).map((l) => l.id))
   const listenPos = positionen.filter((p) => offeneListenIds.has(p.liste_id))
@@ -57,7 +57,8 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
     .filter((i) => i > jetzt)
     .sort((a, b) => a - b)[0]
   const kuendigungen = baldKuendbar(posten, new Date(), 30)
-  const reserve = aktiveKonten.length > 0 ? notgroschen(konten, posten, einstellungen, jetzt) : null
+  const reserve = aktiveKonten.length > 0 ? notgroschen(konten, posten, einstellungen, jetzt, toepfe) : null
+  const budgets = listen.filter((l) => !l.erledigt && l.budget != null).map((l) => ({ l, s: budgetStand(l, positionen) }))
   const anteil = (x: number) => (summe.einnahmen > 0 ? Math.max(0, x) : 0)
 
   return (
@@ -78,11 +79,15 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
             )}
             <div className="vier-spalten">
               <div><span className="klein"><i className="legende" style={{ background: 'var(--text)' }} />Einnahmen</span><span className="wert">{formatEuro(summe.einnahmen)}</span></div>
-              <div><span className="klein"><i className="legende" style={{ background: 'var(--muted)' }} />Fixkosten</span><span className="wert">−{formatEuro(summe.fixkosten)}</span></div>
-              <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-2)' }} />Sparen</span><span className="wert">−{formatEuro(summe.sparen)}</span></div>
-              <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-3)' }} />Töpfe</span><span className="wert">−{formatEuro(toepfeMonat)}</span></div>
+              <div><span className="klein"><i className="legende" style={{ background: 'var(--muted)' }} />Fixkosten</span><span className="wert">{abzug(summe.fixkosten)}</span></div>
+              {summe.sparen >= 0 ? (
+                <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-2)' }} />Sparen</span><span className="wert">{abzug(summe.sparen)}</span></div>
+              ) : (
+                <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-2)' }} />Entnahme</span><span className="wert">+{formatEuro(-summe.sparen)}</span></div>
+              )}
+              <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-3)' }} />Töpfe</span><span className="wert">{abzug(toepfeMonat)}</span></div>
               {summe.einkaeufe > 0 && (
-                <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-4)' }} />Einkäufe</span><span className="wert">−{formatEuro(summe.einkaeufe)}</span></div>
+                <div><span className="klein"><i className="legende" style={{ background: 'var(--punkt-4)' }} />Einkäufe</span><span className="wert">{abzug(summe.einkaeufe)}</span></div>
               )}
             </div>
             {sparquote !== null && (
@@ -114,7 +119,7 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
           {kuendigungen.map(({ posten: p, tageUebrig }) => (
             <span key={p.id} className="zeile-titel">
               {p.name}: {tageUebrig === 0 ? 'heute letzter Tag' : `noch ${tageUebrig} ${tageUebrig === 1 ? 'Tag' : 'Tage'}`}
-              <span className="klein normal"> (bis {new Date(p.kuendbar_bis!).toLocaleDateString('de-DE')})</span>
+              <span className="klein normal"> (bis {lokalesDatum(p.kuendbar_bis!).toLocaleDateString('de-DE')})</span>
             </span>
           ))}
           <span className="klein">Wenn du verlängern willst, trag in Planen eine neue Frist ein – dann verschwindet der Hinweis.</span>
@@ -138,6 +143,11 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
             {naechsterKauf !== undefined && ` · nächster Kauf ${monatJahr.format(new Date(indexZuDatum(naechsterKauf)))}`}
             {listenStand.ohneMonat > 0 && ` · ${formatEuro(listenStand.ohneMonat)} noch ohne Monat`}
           </span>
+          {budgets.map(({ l, s }) => (
+            <span key={l.id} className={`klein ${s.ueber > 0 ? 'warn' : ''}`}>
+              {l.name}: {s.ueber > 0 ? `${formatEuro(s.ueber)} über Budget` : `${formatEuro(s.frei!)} von ${formatEuro(s.budget!)} Budget frei`}
+            </span>
+          ))}
         </button>
       )}
 
@@ -177,6 +187,7 @@ export default function Uebersicht({ konten, posten, toepfe, zuKonten, zuPlanen,
             {reserve.konten.length === 0
               ? 'Kein Konto zählt bisher als Notgroschen – tippen zum Einstellen.'
               : `${reserve.konten.map((k) => k.name).join(', ')} · Bedarf ${formatEuro(reserve.bedarfProMonat)} pro Monat`}
+            {reserve.reserviert > 0 && ` · ${formatEuro(reserve.reserviert)} für Töpfe reserviert und nicht mitgezählt`}
             {einstellungen.notgroschen_lebenshaltung === 0 && ' · nur Fixkosten, ohne Essen & Co. – tippen, um Lebenshaltung einzutragen'}
           </span>
         </button>

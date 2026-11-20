@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { betragFuerEingabe, parseBetrag } from '../lib/format'
+import { betragFuerEingabe, heuteLokal, parseBetrag } from '../lib/format'
 import { KONTO_ARTEN, type Konto, type KontoArt, type KontoEingabe } from '../lib/konten'
 
 interface Props {
@@ -55,7 +55,7 @@ export default function KontoFormular({ konto, alleKonten, onSpeichern, onLoesch
       startsaldo_datum:
         konto && Math.abs(konto.startsaldo) === Math.abs(betrag)
           ? konto.startsaldo_datum
-          : new Date().toISOString().slice(0, 10),
+          : heuteLokal(),
       rendite_pa: art === 'depot' ? renditeZahl : null,
       aktiv,
       ausgeblendet,

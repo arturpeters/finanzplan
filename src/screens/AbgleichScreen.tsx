@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { erwarteteStaende, runden, speichereAbgleich, type Abgleich, type AbgleichEintrag } from '../lib/abgleich'
-import { betragFuerEingabe, formatEuro, parseBetrag } from '../lib/format'
+import { betragFuerEingabe, formatEuro, heuteLokal, lokalesDatum, parseBetrag } from '../lib/format'
 import type { Konto } from '../lib/konten'
 import { indexZuDatum, monatsIndex, type Posten } from '../lib/posten'
 import { ladeFreiModus } from '../lib/prognose'
@@ -20,9 +20,16 @@ const datumLang = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'lon
 const monatLang = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
 
 export default function AbgleichScreen({ konten, posten, toepfe, abgleiche, offline, neuLaden, fertig }: Props) {
-  const jetzt = monatsIndex(new Date())
+  const heute = new Date()
+  const jetzt = monatsIndex(heute)
   const aktive = konten.filter((k) => k.aktiv)
-  const erwartet = useMemo(() => erwarteteStaende(konten, posten, toepfe, jetzt, ladeFreiModus()), [konten, posten, toepfe, jetzt])
+  // Sind die Zahlungen dieses Monats (Vergütung, Miete, Abos …) schon durch?
+  // Nein → Stand zum Monatsanfang, der laufende Monat kommt in der Prognose noch.
+  // Ja → Stand zum Monatsende, der laufende Monat ist erledigt.
+  // Vorschlag: bis zum 5. "nein", danach "ja".
+  const [zahlungenDurch, setZahlungenDurch] = useState(heute.getDate() > 5)
+  const ziel = zahlungenDurch ? jetzt : jetzt - 1
+  const erwartet = useMemo(() => erwarteteStaende(konten, posten, toepfe, ziel, ladeFreiModus()), [konten, posten, toepfe, ziel])
   const [eingaben, setEingaben] = useState<Record<string, string>>({})
   const [fehler, setFehler] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(false)
@@ -46,8 +53,10 @@ export default function AbgleichScreen({ konten, posten, toepfe, abgleiche, offl
     if (ausgefuellt.length === 0) return setFehler('Trag mindestens einen Kontostand ein.')
     const eintraege: AbgleichEintrag[] = ausgefuellt.map((z) => ({ konto_id: z.k.id, saldo: z.istGespeichert!, erwartet: z.plan }))
     setLaedt(true)
-    // Stand zum Monatsanfang: immer der 1. des laufenden Monats
-    const f = await speichereAbgleich(eintraege, indexZuDatum(jetzt))
+    // Datum trägt die Bedeutung (siehe kontoBasis): der 1. = Stand zum Monatsanfang,
+    // jeder andere Tag = Stand zum Monatsende. Wer am 1. schon "ja" sagt, bekommt den 2.
+    const datum = !zahlungenDurch ? indexZuDatum(jetzt) : heute.getDate() === 1 ? `${indexZuDatum(jetzt).slice(0, 8)}02` : heuteLokal(heute)
+    const f = await speichereAbgleich(eintraege, datum)
     setLaedt(false)
     if (f) return setFehler(f)
     setErgebnis({ ist: summeIst, plan: summePlan })
@@ -81,9 +90,18 @@ export default function AbgleichScreen({ konten, posten, toepfe, abgleiche, offl
       <section className="karte">
         <span className="zeile-titel">Monatsabgleich {monatLang.format(new Date(indexZuDatum(jetzt)))}</span>
         <p className="klein hinweis">
-          Trag ein, was heute wirklich auf deinen Konten ist – am besten Anfang des Monats. „Plan“ ist, was die App zum Monatsanfang erwartet. Leere Felder werden übersprungen.
+          Trag ein, was heute wirklich auf deinen Konten ist. „Plan“ ist, was die App für diesen Zeitpunkt erwartet. Leere Felder werden übersprungen.
         </p>
         {offline && <span className="klein warn">Offline – speichern geht erst wieder mit Verbindung.</span>}
+      </section>
+
+      <section className="karte">
+        <span className="zeile-titel">Sind die Zahlungen für diesen Monat schon durch?</span>
+        <span className="klein">Also Vergütung, Miete, Abos und Sparraten dieses Monats. Davon hängt ab, mit welchem Plan-Wert verglichen wird – und ob die Prognose den Monat noch einmal rechnet.</span>
+        <div className="segment" role="radiogroup" aria-label="Zahlungen dieses Monats schon durch?">
+          <button role="radio" aria-checked={!zahlungenDurch} className={!zahlungenDurch ? 'aktiv' : ''} onClick={() => setZahlungenDurch(false)}>Nein, Monatsanfang</button>
+          <button role="radio" aria-checked={zahlungenDurch} className={zahlungenDurch ? 'aktiv' : ''} onClick={() => setZahlungenDurch(true)}>Ja, schon durch</button>
+        </div>
       </section>
 
       <section className="karte liste">
@@ -148,7 +166,7 @@ export default function AbgleichScreen({ konten, posten, toepfe, abgleiche, offl
           {verlauf.map((r) => (
             <div key={r.datum} className="zeile">
               <div className="zeile-text">
-                <span className="zeile-titel">{datumLang.format(new Date(r.datum))}</span>
+                <span className="zeile-titel">{datumLang.format(lokalesDatum(r.datum))}</span>
                 <span className="klein">{r.anzahl} {r.anzahl === 1 ? 'Konto' : 'Konten'} · Ist {formatEuro(r.ist)}</span>
               </div>
               {r.abweichung !== null && (

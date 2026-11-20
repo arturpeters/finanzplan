@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { formatEuro } from '../lib/format'
-import type { Konto } from '../lib/konten'
+import { formatEuro, abzug, lokalesDatum } from '../lib/format'
+import { standardPruefer, type Konto } from '../lib/konten'
 import {
   indexZuDatum,
   istFaelligIm,
@@ -44,7 +44,7 @@ export default function Planen({ posten, listenPosten, toepfe, konten, offline, 
   const jetzt = monatsIndex(new Date())
   const [m, setM] = useState(jetzt) // angezeigter Monat
   const alle = [...posten, ...listenPosten]
-  const fluss = monatsFluss(alle, m)
+  const fluss = monatsFluss(alle, m, standardPruefer(konten))
   const toepfeMonat = toepfeRateIm(toepfe, m, jetzt)
   const frei = Math.round((fluss.frei - toepfeMonat) * 100) / 100
   const grosse = naechsteGrosseZahlung(alle, m, 12)
@@ -78,7 +78,7 @@ export default function Planen({ posten, listenPosten, toepfe, konten, offline, 
       if (ende !== null && ende < m) details.push('abgelaufen')
     }
     if (p.kategorie) details.push(p.kategorie)
-    if (p.kuendbar_bis) details.push(`kündbar bis ${new Date(p.kuendbar_bis).toLocaleDateString('de-DE')}`)
+    if (p.kuendbar_bis) details.push(`kündbar bis ${lokalesDatum(p.kuendbar_bis).toLocaleDateString('de-DE')}`)
 
     return (
       <button className={`posten-zeile ${!gueltig || !faellig ? 'blass' : ''}`} onClick={() => setBearbeiten(p)} aria-label={`${p.name} bearbeiten`}>
@@ -111,10 +111,14 @@ export default function Planen({ posten, listenPosten, toepfe, konten, offline, 
         </div>
         <div className="vier-spalten">
           <div><span className="klein">Einnahmen</span><span className="wert">{formatEuro(fluss.einnahmen)}</span></div>
-          <div><span className="klein">Fixkosten</span><span className="wert">−{formatEuro(fluss.fixkosten)}</span></div>
-          <div><span className="klein">Sparen</span><span className="wert">−{formatEuro(fluss.sparen)}</span></div>
-          <div><span className="klein">Töpfe</span><span className="wert">−{formatEuro(toepfeMonat)}</span></div>
-          {fluss.einkaeufe > 0 && <div><span className="klein">Einkäufe</span><span className="wert">−{formatEuro(fluss.einkaeufe)}</span></div>}
+          <div><span className="klein">Fixkosten</span><span className="wert">{abzug(fluss.fixkosten)}</span></div>
+          {fluss.sparen >= 0 ? (
+            <div><span className="klein">Sparen</span><span className="wert">{abzug(fluss.sparen)}</span></div>
+          ) : (
+            <div><span className="klein">Entnahme</span><span className="wert">+{formatEuro(-fluss.sparen)}</span></div>
+          )}
+          <div><span className="klein">Töpfe</span><span className="wert">{abzug(toepfeMonat)}</span></div>
+          {fluss.einkaeufe > 0 && <div><span className="klein">Einkäufe</span><span className="wert">{abzug(fluss.einkaeufe)}</span></div>}
           <div className="ganze-breite"><span className="klein">Frei in diesem Monat</span><span className={`wert akzent ${frei < 0 ? 'minus' : ''}`}>{formatEuro(frei)}</span></div>
         </div>
         {grosse && (
@@ -172,8 +176,8 @@ export default function Planen({ posten, listenPosten, toepfe, konten, offline, 
           {einkaeufe.map((p) => (
             <div key={p.id} className="posten-zeile statisch">
               <span className="zeile-text">
-                <span className="zeile-titel">{p.name}</span>
-                <span className="klein">{p.kategorie}</span>
+                <span className="zeile-titel">{p.notiz === 'gekauft' ? `✓ ${p.name}` : p.name}</span>
+                <span className="klein">{p.kategorie}{p.notiz === 'gekauft' ? ' · gekauft' : ''}</span>
               </span>
               <span className="betrag">{formatEuro(p.betrag)}</span>
             </div>
